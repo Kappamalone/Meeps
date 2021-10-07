@@ -1,5 +1,6 @@
 set(TESTS "${PROJECT_NAME}_tests")
 set(SOURCES
+    test_memory.h
     test_memory.cpp
     test_main.cpp
 )

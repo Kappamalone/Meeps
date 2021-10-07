@@ -60,7 +60,6 @@ public:
   }
 
 private:
-  // Represents the internal state of the cpu
   State state;
   CPUMode mode;
 };

@@ -4,13 +4,14 @@
 #include "state.h"
 #include <stdint.h>
 
-
 namespace Meeps {
 
 #define TEMPLATE_LOGICAL(instr, op)                                            \
   if constexpr (T == instr) {                                                  \
     value op operand;                                                          \
   }
+
+enum class Comparison { SLT, SLTI, SLTU, SLTIU };
 
 enum class Logical { AND, ANDI, OR, ORI, XOR, XORI, NOR };
 
@@ -52,9 +53,34 @@ public:
     fmt::print("Hello World! {}\n", state.GetGPR(10));
   }
 
+  template <Comparison T>
+  static void ComparisonInstruction(State &state, Instruction instr) {
+    uint32_t dest;
+    uint32_t operand;
+    uint32_t value = state.GetGPR(instr.i.rs);
+
+    if constexpr (ValueIsIn(T, Comparison::SLT, Comparison::SLTU)) {
+      dest = instr.r.rd;
+      operand = state.GetGPR(instr.i.rt);
+    } else {
+      dest = instr.i.rt;
+      operand = (uint32_t)(uint16_t)instr.i.imm;
+    }
+
+    if constexpr (ValueIsIn(T, Comparison::SLT, Comparison::SLTI)) {
+      // signed
+      value = (int32_t)value < (int32_t)operand;
+    } else {
+      //unsigned
+      value = value < operand;
+    }
+
+    state.SetGPR(dest, value);
+  }
+
   template <Logical T>
   static void LogicalInstruction(State &state, Instruction instr) {
-    size_t dest;
+    uint32_t dest;
     uint32_t operand;
     uint32_t value = state.GetGPR(instr.i.rs);
 
