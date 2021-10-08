@@ -2,13 +2,9 @@
 #include "common.h"
 #include "fmt/core.h"
 #include "state.h"
+#include <stdint.h>
 
 namespace Meeps {
-
-#define TEMPLATE_LOGICAL(instr, op)                                            \
-  if constexpr (T == instr) {                                                  \
-    value op operand;                                                          \
-  }
 
 enum class Arithmetic { ADD, ADDU, SUB, SUBU, ADDI, ADDIU };
 
@@ -131,13 +127,13 @@ public:
       operand = state.GetGPR(instr.i.rt);
     }
 
-    TEMPLATE_LOGICAL(Logical::AND, &=);
-    TEMPLATE_LOGICAL(Logical::ANDI, &=);
-    TEMPLATE_LOGICAL(Logical::OR, |=);
-    TEMPLATE_LOGICAL(Logical::ORI, |=);
-    TEMPLATE_LOGICAL(Logical::XOR, ^=);
-    TEMPLATE_LOGICAL(Logical::XORI, ^=);
-    if constexpr (T == Logical::NOR) {
+    if constexpr (ValueIsIn(T, Logical::AND, Logical::ANDI)) {
+      value &= operand;
+    } else if constexpr (ValueIsIn(T, Logical::OR, Logical::ORI)) {
+      value |= operand;
+    } else if constexpr (ValueIsIn(T, Logical::XOR, Logical::XORI)) {
+      value ^= operand;
+    } else if constexpr (T == Logical::NOR) {
       value = ~(value | operand);
     }
 
@@ -178,8 +174,7 @@ public:
 
   template <Jump T>
   static void JumpInstruction(State &state, Instruction instr) {
-    // We set nextPC to emulate branch delays, with the real PC having a delay
-    // of 1 instr
+    // We set nextPC to emulate branch delays, with the real PC having a delay of 1 instr
     uint32_t value;
 
     if constexpr (ValueIsIn(T, Jump::J, Jump::JAL)) {
@@ -195,6 +190,7 @@ public:
     // Return Addr -> 0xbfc0'0008 : Return instr
     // In main loop:
     // PC = NextPC, then NextPC = value, therefore Return Addr = PC + 4
+    // note: PC = ($ + 4)
     if constexpr (T == Jump::JAL) {
       state.SetGPR(31, state.pc + 4); // 31 = $ra
     } else if constexpr (T == Jump::JALR) {
@@ -205,7 +201,46 @@ public:
   }
 
   template <Branch T>
-  static void BranchInstruction(State &state, Instruction instr) {}
+  static void BranchInstruction(State &state, Instruction instr) {
+    uint32_t rsReg = state.GetGPR(instr.i.rs);
+    uint32_t value = state.pc + (instr.i.imm * 4);
+
+    if constexpr (T == Branch::BEQ) {
+      if (rsReg == state.GetGPR(instr.i.rt)) {
+        state.nextPC = value;
+      } else if constexpr (T == Branch::BNE) {
+        if (rsReg != state.GetGPR(instr.i.rt)) {
+          state.nextPC = value;
+        }
+      } else if constexpr (T == Branch::BLTZ) {
+        if (rsReg < 0) {
+          state.nextPC = value;
+        }
+      } else if constexpr (T == Branch::BGEZ) {
+        if (rsReg >= 0) {
+          state.nextPC = value;
+        }
+      } else if constexpr (T == Branch::BGTZ) {
+        if (rsReg > 0) {
+          state.nextPC = value;
+        }
+      } else if constexpr (T == Branch::BLEZ) {
+        if (rsReg <= 0) {
+          state.nextPC = value;
+        }
+      } else if constexpr (T == Branch::BLTZAL) {
+        if (rsReg < 0) {
+          state.nextPC = value;
+          state.SetGPR(31, state.pc + 4);
+        }
+      } else if constexpr (T == Branch::BGEZAL) {
+        if (rsReg >= 0) {
+          state.nextPC = value;
+          state.SetGPR(31, state.pc + 4);
+        }
+      }
+    }
+  }
 
   static void SecondaryTableLookup(State &state, Instruction instr) {
     secondaryTable[instr.r.func](state, instr);
