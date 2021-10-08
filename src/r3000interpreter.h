@@ -6,6 +6,10 @@
 
 namespace Meeps {
 
+enum class ALoad { LB, LBU, LH, LHU, LW };
+
+enum class AStore { SB, SH, SW };
+
 enum class Arithmetic { ADD, ADDU, SUB, SUBU, ADDI, ADDIU };
 
 enum class Comparison { SLT, SLTI, SLTU, SLTIU };
@@ -51,8 +55,49 @@ using interpreterfp = void (*)(State &, Instruction);
 
 class R3000Interpreter {
 public:
-  static void Execute(State &state) {
-    fmt::print("Hello World! {}\n", state.GetGPR(10));
+  static void ExecuteInstruction(State &state) {
+#ifndef NDEBUG
+    fmt::print("PC: {:08X}\n", state.pc);
+#endif
+    uint32_t instr = state.read32(state.pc);
+    state.pc = state.nextPC;
+    state.nextPC += 4;
+
+    primaryTable[instr](state, instr);
+  }
+
+  template <ALoad T>
+  static void ALoadInstruction(State &state, Instruction instr) {
+    uint32_t value;
+    uint32_t dest = instr.i.rt;
+    uint32_t addr = state.GetGPR(instr.i.rs) + instr.i.imm;
+
+    if constexpr (T == ALoad::LB) {
+      value = (int32_t)(int8_t)(state.read8(addr));
+    } else if constexpr (T == ALoad::LBU) {
+      value = state.read8(addr);
+    } else if constexpr (T == ALoad::LH) {
+      value = (int32_t)(int16_t)(state.read16(addr));
+    } else if constexpr (T == ALoad::LHU) {
+      value = state.read16(addr);
+    } else if constexpr (T == ALoad::LW) {
+      value = state.read32(addr);
+    }
+
+    state.SetGPR(dest, value);
+  }
+
+  template <AStore T>
+  static void AStoreInstruction(State &state, Instruction instr) {
+    uint32_t value = state.GetGPR(instr.i.rt);
+    uint32_t addr = state.GetGPR(instr.i.rs) + instr.i.imm;
+    if constexpr (T == AStore::SB) {
+      state.write8(addr, value & 0xff);
+    } else if constexpr (T == AStore::SH) {
+      state.write8(addr, value & 0xffff);
+    } else if constexpr (T == AStore::SW) {
+      state.write8(addr, value);
+    }
   }
 
   template <Arithmetic T>
@@ -174,11 +219,13 @@ public:
 
   template <Jump T>
   static void JumpInstruction(State &state, Instruction instr) {
-    // We set nextPC to emulate branch delays, with the real PC having a delay of 1 instr
+    // We set nextPC to emulate branch delays, with the real PC having a delay
+    // of 1 instr
     uint32_t value;
 
     if constexpr (ValueIsIn(T, Jump::J, Jump::JAL)) {
-      // TODO: are we using the current pc or nextPC?
+      // TODO: are we using the current pc or nextPC? (should be the same
+      // regardless I think)
       value = (state.pc & 0xf000'0000) + (instr.j.target << 2);
     } else {
       value = state.GetGPR(instr.i.rs);

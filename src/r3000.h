@@ -7,22 +7,24 @@
 #include <stdint.h>
 #include <type_traits>
 
-
-#ifndef NDEBUG
-#define private public
-#endif
-
 namespace Meeps {
 
 enum class CPUMode {
   Interpreter,
+  // soontm
 };
 
 class CPU {
 public:
   CPU(CPUMode mode) { this->mode = mode; }
 
-  void Run(int cycles) { R3000Interpreter::Execute(state); }
+  void Run(int cycles) {
+    while (cycles--) {
+      R3000Interpreter::ExecuteInstruction(state);
+    }
+  }
+
+  State &GetState() { return state; }
 
   void SetPC(uint32_t pc) {
     state.pc = pc;

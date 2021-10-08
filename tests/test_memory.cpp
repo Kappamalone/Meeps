@@ -11,7 +11,7 @@ using namespace Meeps;
 
 static CPU r3000{CPUMode::Interpreter};
 static TestMemory mem{};
-static auto &state = r3000.state;
+static auto &state = r3000.GetState();
 
 // TODO: figure out how to use unicorn
 
