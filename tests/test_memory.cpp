@@ -9,9 +9,9 @@
 
 using namespace Meeps;
 
-CPU r3000{CPUMode::Interpreter};
-TestMemory mem{};
-auto &state = r3000.state;
+static CPU r3000{CPUMode::Interpreter};
+static TestMemory mem{};
+static auto &state = r3000.state;
 
 // TODO: figure out how to use unicorn
 

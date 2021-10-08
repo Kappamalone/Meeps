@@ -2,7 +2,6 @@
 #include "common.h"
 #include "fmt/core.h"
 #include "state.h"
-#include <stdint.h>
 
 namespace Meeps {
 
@@ -11,11 +10,18 @@ namespace Meeps {
     value op operand;                                                          \
   }
 
+enum class Arithmetic { ADD, ADDU, SUB, SUBU, ADDI, ADDIU };
+
 enum class Comparison { SLT, SLTI, SLTU, SLTIU };
 
 enum class Logical { AND, ANDI, OR, ORI, XOR, XORI, NOR };
 
 enum class Shift { SLL, SRL, SRA, SLLV, SRLV, SRAV, LUI };
+
+enum class Jump { J, JAL, JR, JALR };
+
+enum class Branch { BEQ, BNE, BLTZ, BGEZ, BGTZ, BLEZ, BLTZAL, BGEZAL };
+
 union Instruction {
   uint32_t value;
   Instruction(uint32_t value) : value(value) {}
@@ -53,6 +59,39 @@ public:
     fmt::print("Hello World! {}\n", state.GetGPR(10));
   }
 
+  template <Arithmetic T>
+  static void ArithmeticInstruction(State &state, Instruction instr) {
+    uint32_t dest;
+    uint32_t operand;
+    uint32_t value = state.GetGPR(instr.i.rs);
+
+    if constexpr (ValueIsIn(T, Arithmetic::ADDI, Arithmetic::ADDIU)) {
+      dest = instr.i.rt;
+    } else {
+      dest = instr.r.rd;
+    }
+
+    if constexpr (ValueIsIn(T, Arithmetic::ADD, Arithmetic::ADDI,
+                            Arithmetic::SUB)) {
+      // signed
+      // TODO: how do you detect overflow again?
+      operand = T == Arithmetic::ADDI ? (int32_t)(int16_t)instr.i.imm
+                                      : state.GetGPR(instr.i.rt);
+    } else {
+      // unsigned
+      // TODO: check ternary constexpr stuff on godbolt
+      operand = T == Arithmetic::ADDIU ? instr.i.imm : state.GetGPR(instr.i.rt);
+    }
+
+    if constexpr (ValueIsIn(T, Arithmetic::SUB, Arithmetic::SUBU)) {
+      value -= operand;
+    } else {
+      value += operand;
+    }
+
+    state.SetGPR(dest, value);
+  }
+
   template <Comparison T>
   static void ComparisonInstruction(State &state, Instruction instr) {
     uint32_t dest;
@@ -71,7 +110,7 @@ public:
       // signed
       value = (int32_t)value < (int32_t)operand;
     } else {
-      //unsigned
+      // unsigned
       value = value < operand;
     }
 
@@ -136,6 +175,37 @@ public:
 
     state.SetGPR(dest, value);
   }
+
+  template <Jump T>
+  static void JumpInstruction(State &state, Instruction instr) {
+    // We set nextPC to emulate branch delays, with the real PC having a delay
+    // of 1 instr
+    uint32_t value;
+
+    if constexpr (ValueIsIn(T, Jump::J, Jump::JAL)) {
+      // TODO: are we using the current pc or nextPC?
+      value = (state.pc & 0xf000'0000) + (instr.j.target << 2);
+    } else {
+      value = state.GetGPR(instr.i.rs);
+    }
+
+    // Example:
+    // PC          -> 0xbfc0'0000 : J instr
+    // NextPC      -> 0xbfc0'0004 : Branch Delay instr
+    // Return Addr -> 0xbfc0'0008 : Return instr
+    // In main loop:
+    // PC = NextPC, then NextPC = value, therefore Return Addr = PC + 4
+    if constexpr (T == Jump::JAL) {
+      state.SetGPR(31, state.pc + 4); // 31 = $ra
+    } else if constexpr (T == Jump::JALR) {
+      state.SetGPR(instr.r.rd, state.pc + 4);
+    }
+
+    state.nextPC = value;
+  }
+
+  template <Branch T>
+  static void BranchInstruction(State &state, Instruction instr) {}
 
   static void SecondaryTableLookup(State &state, Instruction instr) {
     secondaryTable[instr.r.func](state, instr);

@@ -1,21 +1,21 @@
+#include "test_memory.h"
 #include <array>
 #include <doctest.h>
 #include <fmt/core.h>
 #include <r3000.h>
 #include <r3000interpreter.h>
-#include "test_memory.h"
+
 
 using namespace Meeps;
 
-CPU r3000{CPUMode::Interpreter};
-TestMemory mem{};
-auto &state = r3000.state;
+static CPU r3000{CPUMode::Interpreter};
+static TestMemory mem{};
+static auto &state = r3000.state;
 
 TEST_CASE("CPU Instructions") {
+  // and $4 , $2 , $1
   state.SetGPR(0x1, 0xff0f);
   state.SetGPR(0x2, 0x30f);
-
-  // and $4 , $2 , $1
   R3000Interpreter::LogicalInstruction<Logical::AND>(state, 0x00412024);
   REQUIRE(state.GetGPR(4) == 0x30f);
 
@@ -39,5 +39,14 @@ TEST_CASE("CPU Instructions") {
   R3000Interpreter::ShiftInstruction<Shift::SRAV>(state, 0x00e84007);
   REQUIRE(state.GetGPR(8) == 0xf0000000);
 
-  //TODO: test comparison
+  // slt $1 , $25 , $24
+  state.SetGPR(25, 10);
+  state.SetGPR(24, 12);
+  R3000Interpreter::ComparisonInstruction<Comparison::SLT>(state, 0x0338082a);
+  REQUIRE(state.GetGPR(1) == 1);
+
+  state.SetGPR(25, -12);
+  state.SetGPR(24, -9);
+  R3000Interpreter::ComparisonInstruction<Comparison::SLT>(state, 0x0338082a);
+  REQUIRE(state.GetGPR(1) == 1);
 }
