@@ -6,13 +6,17 @@
 
 namespace Meeps {
 
+enum class Invalid { NA };
+
+enum class Special { SYSCALL, BREAK };
+
 enum class ALoad { LB, LBU, LH, LHU, LW };
 
 enum class AStore { SB, SH, SW };
 
-enum class ULoadStore { LWL, LWR, SWL, SWR};
+enum class ULoadStore { LWL, LWR, SWL, SWR };
 
-enum class Arithmetic { ADD, ADDU, SUB, SUBU, ADDI, ADDIU };
+enum class Arithmetic { ADD, ADDU, ADDI, ADDIU, SUB, SUBU };
 
 enum class Comparison { SLT, SLTI, SLTU, SLTIU };
 
@@ -63,11 +67,11 @@ public:
 #ifndef NDEBUG
     fmt::print("PC: {:08X}\n", state.pc);
 #endif
-    uint32_t instr = state.read32(state.pc);
+    Instruction instr = state.read32(state.pc);
     state.pc = state.nextPC;
     state.nextPC += 4;
 
-    primaryTable[instr](state, instr);
+    primaryTable[instr.i.op](state, instr);
   }
 
   // TODO: load delays maybe?
@@ -360,23 +364,51 @@ public:
     }
   }
 
-  static void SecondaryTableLookup(State &state, Instruction instr) {
-    secondaryTable[instr.r.func](state, instr);
+  template <Special T>
+  static void SpecialInstruction(State &state, Instruction instr) {
+    fmt::print("[SYSCALL / BREAK] PC: {:08X} NEXTPC: {:08X} OPCODE: {:08X}\n",
+               state.pc, state.nextPC, instr.value);
+    exit(1);
   }
 
+  template <Invalid T>
   static void InvalidInstruction(State &state, Instruction instr) {
     fmt::print(
         "[INVALID INSTRUCTION] PC: {:08X} NEXTPC: {:08X} OPCODE: {:08X}\n",
         state.pc, state.nextPC, instr.value);
+    exit(1);
+  }
+
+  static void SecondaryTableLookup(State &state, Instruction instr) {
+    secondaryTable[instr.r.func](state, instr);
   }
 
 private:
+#define instr(type, op) type##Instruction<type::op>
+  // clang-format off
   constexpr static std::array<interpreterfp, 64> primaryTable = {
-
+    SecondaryTableLookup,
   };
-  constexpr static std::array<interpreterfp, 32> secondaryTable = {
-
+  constexpr static std::array<interpreterfp, 64> secondaryTable = {
+    instr(Shift, SLL),       instr(Invalid, NA),      instr(Shift, SRL),      instr(Shift, SRA),       // first column
+    instr(Shift, SLLV),      instr(Invalid, NA),      instr(Shift, SRLV),     instr(Shift, SRAV),  
+    instr(Jump, JR),         instr(Jump, JALR),       instr(Invalid, NA),     instr(Invalid, NA),    // second column
+    instr(Special, SYSCALL), instr(Special, BREAK),   instr(Invalid, NA),     instr(Invalid, NA), 
+    instr(MulDiv, MFHI),     instr(MulDiv, MTHI),     instr(MulDiv, MFLO),    instr(MulDiv, MTLO),     // third column
+    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(MulDiv, MULT),     instr(MulDiv, MULTU),    instr(MulDiv, DIV),     instr(MulDiv, DIVU),     // fourth column
+    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Arithmetic, ADD),  instr(Arithmetic, ADDU), instr(Arithmetic, SUB), instr(Arithmetic, SUBU), // fifth column
+    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Invalid, NA),      instr(Invalid, NA),      instr(Comparison, SLT), instr(Comparison, SLTU), // sixth column
+    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),    // seventh column
+    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),    // eigth column
+    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
   };
+// clang-format on
+#undef instr
 };
 
 } // namespace Meeps
