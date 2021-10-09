@@ -10,6 +10,8 @@ enum class ALoad { LB, LBU, LH, LHU, LW };
 
 enum class AStore { SB, SH, SW };
 
+enum class ULoadStore { LWL, LWR, SWL, SWR};
+
 enum class Arithmetic { ADD, ADDU, SUB, SUBU, ADDI, ADDIU };
 
 enum class Comparison { SLT, SLTI, SLTU, SLTIU };
@@ -17,6 +19,8 @@ enum class Comparison { SLT, SLTI, SLTU, SLTIU };
 enum class Logical { AND, ANDI, OR, ORI, XOR, XORI, NOR };
 
 enum class Shift { SLL, SRL, SRA, SLLV, SRLV, SRAV, LUI };
+
+enum class MulDiv { MULT, MULTU, DIV, DIVU, MFHI, MFLO, MTHI, MTLO };
 
 enum class Jump { J, JAL, JR, JALR };
 
@@ -66,6 +70,7 @@ public:
     primaryTable[instr](state, instr);
   }
 
+  // TODO: load delays maybe?
   template <ALoad T>
   static void ALoadInstruction(State &state, Instruction instr) {
     uint32_t value;
@@ -73,11 +78,11 @@ public:
     uint32_t addr = state.GetGPR(instr.i.rs) + instr.i.imm;
 
     if constexpr (T == ALoad::LB) {
-      value = (int32_t)(int8_t)(state.read8(addr));
+      value = (int32_t)(int8_t)state.read8(addr);
     } else if constexpr (T == ALoad::LBU) {
       value = state.read8(addr);
     } else if constexpr (T == ALoad::LH) {
-      value = (int32_t)(int16_t)(state.read16(addr));
+      value = (int32_t)(int16_t)state.read16(addr);
     } else if constexpr (T == ALoad::LHU) {
       value = state.read16(addr);
     } else if constexpr (T == ALoad::LW) {
@@ -98,6 +103,11 @@ public:
     } else if constexpr (T == AStore::SW) {
       state.write8(addr, value);
     }
+  }
+
+  template <ULoadStore T>
+  static void ULoadStoreInstruction(State &state, Instruction instr) {
+    return;
   }
 
   template <Arithmetic T>
@@ -217,6 +227,66 @@ public:
     state.SetGPR(dest, value);
   }
 
+  template <MulDiv T>
+  static void MulDivInstruction(State &state, Instruction instr) {
+    if constexpr (ValueIsIn(T, MulDiv::MFHI, MulDiv::MFLO)) {
+      uint32_t dest = instr.r.rd;
+      uint32_t value;
+      if constexpr (T == MulDiv::MFHI) {
+        value = state.hi;
+      } else {
+        value = state.lo;
+      }
+      state.SetGPR(dest, value);
+      return;
+    }
+
+    if constexpr (ValueIsIn(T, MulDiv::MTHI, MulDiv::MTLO)) {
+      uint32_t value = state.GetGPR(instr.i.rs);
+      if constexpr (T == MulDiv::MFHI) {
+        state.hi = value;
+      } else {
+        state.lo = value;
+      }
+      return;
+    }
+
+    uint32_t op1 = state.GetGPR(instr.i.rs);
+    uint32_t op2 = state.GetGPR(instr.i.rt);
+
+    if constexpr (T == MulDiv::MULT) {
+      uint64_t result = (int64_t)(int32_t)op1 * (int64_t)(int32_t)op2;
+      state.hi = result & 0xffff'ffff'0000'0000 >> 32;
+      state.lo = result & 0xffff'ffff;
+      return;
+    }
+
+    if constexpr (T == MulDiv::MULTU) {
+      uint64_t result = (uint64_t)op1 * (uint64_t)op2;
+      state.hi = result & 0xffff'ffff'0000'0000 >> 32;
+      state.lo = result & 0xffff'ffff;
+      return;
+    }
+
+    if constexpr (T == MulDiv::DIV) {
+      uint32_t quotient = (int32_t)op1 / (int32_t)op2;
+      uint32_t remainder = (int32_t)op1 % (int32_t)op2;
+
+      state.lo = quotient;
+      state.hi = remainder;
+      return;
+    }
+
+    if constexpr (T == MulDiv::DIVU) {
+      uint32_t quotient = op1 / op2;
+      uint32_t remainder = op1 % op2;
+
+      state.lo = quotient;
+      state.hi = remainder;
+      return;
+    }
+  }
+
   template <Jump T>
   static void JumpInstruction(State &state, Instruction instr) {
     // We set nextPC to emulate branch delays, with the real PC having a delay
@@ -241,7 +311,8 @@ public:
     if constexpr (T == Jump::JAL) {
       state.SetGPR(31, state.pc + 4); // 31 = $ra
     } else if constexpr (T == Jump::JALR) {
-      state.SetGPR(instr.r.rd, state.pc + 4);
+      uint32_t dest = instr.r.rd;
+      state.SetGPR(dest, state.pc + 4);
     }
 
     state.nextPC = value;

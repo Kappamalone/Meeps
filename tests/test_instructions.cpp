@@ -1,10 +1,10 @@
 #include "test_memory.h"
 #include <array>
+#include <corecrt_math.h>
 #include <doctest.h>
 #include <fmt/core.h>
 #include <r3000.h>
 #include <r3000interpreter.h>
-
 
 using namespace Meeps;
 

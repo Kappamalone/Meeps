@@ -1,6 +1,7 @@
 #pragma once
 #include "types.h"
 #include <array>
+#include <stdint.h>
 
 
 namespace Meeps {
@@ -15,6 +16,8 @@ public:
   // Two PC's are used to deal with branch delays
   uint32_t pc;
   uint32_t nextPC;
+  uint32_t hi;
+  uint32_t lo;
 
   std::array<uint32_t, 32> gpr;
 
