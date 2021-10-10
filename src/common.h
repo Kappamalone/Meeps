@@ -1,5 +1,4 @@
 #pragma once
-#include "types.h"
 
 namespace Meeps {
 // https://stackoverflow.com/questions/15181579/c-most-efficient-way-to-compare-a-variable-to-multiple-values

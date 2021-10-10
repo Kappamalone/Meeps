@@ -2,13 +2,12 @@
 #include "common.h"
 #include "fmt/core.h"
 #include "state.h"
-#include <stdint.h>
 
 namespace Meeps {
 
 enum class Invalid { NA };
 
-enum class Special { SYSCALL, BREAK };
+enum class Exception { SYSCALL, BREAK };
 
 enum class ALoad { LB, LBU, LH, LHU, LW };
 
@@ -364,8 +363,8 @@ public:
     }
   }
 
-  template <Special T>
-  static void SpecialInstruction(State &state, Instruction instr) {
+  template <Exception T>
+  static void ExceptionInstruction(State &state, Instruction instr) {
     fmt::print("[SYSCALL / BREAK] PC: {:08X} NEXTPC: {:08X} OPCODE: {:08X}\n",
                state.pc, state.nextPC, instr.value);
     exit(1);
@@ -386,26 +385,26 @@ public:
 private:
 #define instr(type, op) type##Instruction<type::op>
   // clang-format off
-  constexpr static std::array<interpreterfp, 64> primaryTable = {
+  static constexpr std::array<interpreterfp, 64> primaryTable = {
     SecondaryTableLookup,
   };
-  constexpr static std::array<interpreterfp, 64> secondaryTable = {
-    instr(Shift, SLL),       instr(Invalid, NA),      instr(Shift, SRL),      instr(Shift, SRA),       // first column
-    instr(Shift, SLLV),      instr(Invalid, NA),      instr(Shift, SRLV),     instr(Shift, SRAV),  
-    instr(Jump, JR),         instr(Jump, JALR),       instr(Invalid, NA),     instr(Invalid, NA),    // second column
-    instr(Special, SYSCALL), instr(Special, BREAK),   instr(Invalid, NA),     instr(Invalid, NA), 
-    instr(MulDiv, MFHI),     instr(MulDiv, MTHI),     instr(MulDiv, MFLO),    instr(MulDiv, MTLO),     // third column
-    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(MulDiv, MULT),     instr(MulDiv, MULTU),    instr(MulDiv, DIV),     instr(MulDiv, DIVU),     // fourth column
-    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Arithmetic, ADD),  instr(Arithmetic, ADDU), instr(Arithmetic, SUB), instr(Arithmetic, SUBU), // fifth column
-    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Invalid, NA),      instr(Invalid, NA),      instr(Comparison, SLT), instr(Comparison, SLTU), // sixth column
-    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),    // seventh column
-    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),    // eigth column
-    instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+  static constexpr std::array<interpreterfp, 64> secondaryTable = {
+    instr(Shift, SLL),         instr(Invalid, NA),      instr(Shift, SRL),      instr(Shift, SRA),       // first column
+    instr(Shift, SLLV),        instr(Invalid, NA),      instr(Shift, SRLV),     instr(Shift, SRAV),  
+    instr(Jump, JR),           instr(Jump, JALR),       instr(Invalid, NA),     instr(Invalid, NA),      // second column
+    instr(Exception, SYSCALL), instr(Exception, BREAK), instr(Invalid, NA),     instr(Invalid, NA), 
+    instr(MulDiv, MFHI),       instr(MulDiv, MTHI),     instr(MulDiv, MFLO),    instr(MulDiv, MTLO),     // third column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(MulDiv, MULT),       instr(MulDiv, MULTU),    instr(MulDiv, DIV),     instr(MulDiv, DIVU),     // fourth column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Arithmetic, ADD),    instr(Arithmetic, ADDU), instr(Arithmetic, SUB), instr(Arithmetic, SUBU), // fifth column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Comparison, SLT), instr(Comparison, SLTU), // sixth column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),      // seventh column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),      // eigth column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
   };
 // clang-format on
 #undef instr

@@ -1,5 +1,6 @@
-#include <array>
 #include "types.h"
+#include <array>
+
 
 static constexpr int KILOBYTE = 1024;
 

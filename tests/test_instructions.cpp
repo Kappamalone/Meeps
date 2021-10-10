@@ -1,10 +1,8 @@
 #include "test_memory.h"
-#include <array>
 #include <doctest.h>
 #include <fmt/core.h>
 #include <r3000.h>
 #include <r3000interpreter.h>
-#include <stdint.h>
 
 using namespace Meeps;
 
@@ -12,14 +10,15 @@ static CPU r3000{CPUMode::Interpreter};
 static TestMemory mem{};
 static auto &state = r3000.GetState();
 
-TEST_CASE("CPU Instructions") {
-  r3000.SetMemoryPointer(&mem);
-r3000.SetReadPointer(&TestMemory::read<uint8_t>);
-r3000.SetWritePointer(&TestMemory::write<uint8_t>);
-r3000.SetReadPointer(&TestMemory::read<uint16_t>);
-r3000.SetWritePointer(&TestMemory::write<uint16_t>);
-r3000.SetReadPointer(&TestMemory::read<uint32_t>);
-r3000.SetWritePointer(&TestMemory::write<uint32_t>);
+TEST_CASE("Basic CPU Instructions") {
+  // r3000.SetMemoryPointer(&mem);
+  // r3000.SetReadPointer(&TestMemory::read<uint8_t>);
+  // r3000.SetWritePointer(&TestMemory::write<uint8_t>);
+  // r3000.SetReadPointer(&TestMemory::read<uint16_t>);
+  // r3000.SetWritePointer(&TestMemory::write<uint16_t>);
+  // r3000.SetReadPointer(&TestMemory::read<uint32_t>);
+  // r3000.SetWritePointer(&TestMemory::write<uint32_t>);
+
   // and $4 , $2 , $1
   state.SetGPR(0x1, 0xff0f);
   state.SetGPR(0x2, 0x30f);
@@ -35,11 +34,9 @@ r3000.SetWritePointer(&TestMemory::write<uint32_t>);
   REQUIRE(state.GetGPR(8) == 0x00130000);
 
   // sllv $25, $24, $3
-  mem.write<uint32_t>(&mem, 0, 0x0078c804);
   state.SetGPR(3, 0x2); // Set shift amount to 2
   state.SetGPR(24, 0x100);
-  r3000.Run(1);
-  //R3000Interpreter::ShiftInstruction<Shift::SLLV>(state, 0x0078c804);
+  R3000Interpreter::ShiftInstruction<Shift::SLLV>(state, 0x0078c804);
   REQUIRE(state.GetGPR(25) == 0x400);
 
   // srav $8 , $8 , $7

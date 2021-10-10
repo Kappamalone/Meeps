@@ -1,8 +1,6 @@
 #pragma once
 #include "types.h"
 #include <array>
-#include <stdint.h>
-
 
 namespace Meeps {
 struct State {

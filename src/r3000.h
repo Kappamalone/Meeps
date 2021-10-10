@@ -2,9 +2,6 @@
 
 #include "r3000interpreter.h"
 #include "state.h"
-#include "types.h"
-#include <array>
-#include <stdint.h>
 #include <type_traits>
 
 namespace Meeps {

@@ -13,8 +13,6 @@ static CPU r3000{CPUMode::Interpreter};
 static TestMemory mem{};
 static auto &state = r3000.GetState();
 
-// TODO: figure out how to use unicorn
-
 TEST_CASE("Memory Interface") {
   r3000.SetMemoryPointer(&mem);
   r3000.SetReadPointer(&TestMemory::read<uint8_t>);
