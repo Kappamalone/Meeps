@@ -19,7 +19,6 @@ public:
 
   std::array<uint32_t, 32> gpr;
 
-  // TODO: asserts
   uint32_t GetGPR(size_t reg) { return gpr[reg]; }
 
   void SetGPR(size_t reg, uint32_t value) {

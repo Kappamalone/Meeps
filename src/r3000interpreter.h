@@ -2,12 +2,19 @@
 #include "common.h"
 #include "fmt/core.h"
 #include "state.h"
+#include <array>
 
 namespace Meeps {
 
-enum class Invalid { NA };
+enum class Invalid { NA, COP };
 
 enum class Exception { SYSCALL, BREAK };
+
+enum class COP { COP0, COP2 };
+
+enum class LWC { COP0, COP2 };
+
+enum class SWC { COP0, COP2 };
 
 enum class ALoad { LB, LBU, LH, LHU, LW };
 
@@ -35,8 +42,8 @@ union Instruction {
 
   // Immediate type opcodes
   struct {
-    unsigned imm : 16;
-    unsigned rt : 5;
+    unsigned imm : 16; // 0  - 15
+    unsigned rt : 5;   // 16 - 20
     unsigned rs : 5;
     unsigned op : 6;
   } i;
@@ -110,7 +117,13 @@ public:
 
   template <ULoadStore T>
   static void ULoadStoreInstruction(State &state, Instruction instr) {
-    return;
+    if constexpr (ValueIsIn(T, ULoadStore::LWL, ULoadStore::LWR)) {
+
+    }
+
+    if constexpr (ValueIsIn(T, ULoadStore::SWL, ULoadStore::SWR)) {
+      
+    }
   }
 
   template <Arithmetic T>
@@ -363,6 +376,47 @@ public:
     }
   }
 
+  // TODO: some sort of base class for COP0 and COP2 that the user implements
+  template<COP T>
+  static void COPInstruction(State& state, Instruction instr) {
+    // mfc, mtc, rfe
+    if constexpr (T == COP::COP0) {
+
+    }
+
+    if constexpr (T == COP::COP2) {
+
+    }
+
+    fmt::print("[COP] Not Implemented Yet!\n");
+  }
+
+  template<LWC T>
+  static void LWCInstruction(State& state, Instruction instr) {
+    if constexpr (T == LWC::COP0) {
+
+    }
+
+    if constexpr (T == LWC::COP2) {
+
+    }
+
+    fmt::print("[COP] Not Implemented Yet!\n");
+  }
+
+  template<SWC T>
+  static void SWCInstruction(State& state, Instruction instr) {
+    if constexpr (T == SWC::COP0) {
+
+    }
+
+    if constexpr (T == SWC::COP2) {
+
+    }
+
+    fmt::print("[COP] Not Implemented Yet!\n");
+  }
+
   template <Exception T>
   static void ExceptionInstruction(State &state, Instruction instr) {
     fmt::print("[SYSCALL / BREAK] PC: {:08X} NEXTPC: {:08X} OPCODE: {:08X}\n",
@@ -372,38 +426,67 @@ public:
 
   template <Invalid T>
   static void InvalidInstruction(State &state, Instruction instr) {
-    fmt::print(
-        "[INVALID INSTRUCTION] PC: {:08X} NEXTPC: {:08X} OPCODE: {:08X}\n",
-        state.pc, state.nextPC, instr.value);
+    if constexpr (T == Invalid::NA) {
+      fmt::print(
+          "[INVALID INSTRUCTION] PC: {:08X} NEXTPC: {:08X} OPCODE: {:08X}\n",
+          state.pc, state.nextPC, instr.value);
+    } else if (T == Invalid::COP) {
+      fmt::print("[INVALID COP INSTRUCTION] PC: {:08X} NEXTPC: {:08X} OPCODE: "
+                 "{:08X}\n",
+                 state.pc, state.nextPC, instr.value);
+    }
     exit(1);
-  }
-
-  static void SecondaryTableLookup(State &state, Instruction instr) {
-    secondaryTable[instr.r.func](state, instr);
   }
 
 private:
 #define instr(type, op) type##Instruction<type::op>
+  static void SecondaryTableLookup(State &state, Instruction instr) {
+    secondaryTable[instr.r.func](state, instr);
+  }
+
+  static void BCondZ(State &state, Instruction instr) {
+    static constexpr std::array<interpreterfp, 4> branchTable{
+        instr(Branch, BLTZ), instr(Branch, BGEZ), instr(Branch, BLTZAL),
+        instr(Branch, BGEZAL)};
+    size_t hash = (((instr.i.rt >> 1) == 0x8) << 1) | instr.i.rt & 1;
+    branchTable[hash](state, instr);
+  }
+
   // clang-format off
   static constexpr std::array<interpreterfp, 64> primaryTable = {
-    SecondaryTableLookup,
+    SecondaryTableLookup,      BCondZ,                  instr(Jump, J),          instr(Jump, JAL),         // first column
+    instr(Branch, BEQ),        instr(Branch, BNE),      instr(Branch, BLEZ),     instr(Branch, BGTZ),
+    instr(Arithmetic, ADDI),   instr(Arithmetic, ADDI), instr(Comparison, SLTI), instr(Comparison, SLTIU), // second column
+    instr(Logical, ANDI),      instr(Logical, ORI),     instr(Logical, XORI),    instr(Shift, LUI),
+    instr(COP, COP0),          instr(Invalid, COP),     instr(COP,COP2),         instr(Invalid, NA),       // third column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),       // fourth column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),
+    instr(ALoad, LB),          instr(ALoad, LH),        instr(ULoadStore, LWL),  instr(ALoad, LW),         // fifth column
+    instr(ALoad, LBU),         instr(ALoad, LHU),       instr(ULoadStore, LWR),  instr(Invalid, NA),
+    instr(AStore, SB),         instr(AStore, SH),       instr(ULoadStore, SWL),  instr(AStore, SW),        // sixth column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(ULoadStore, SWR),  instr(Invalid, NA),
+    instr(LWC, COP0),          instr(Invalid, COP),     instr(LWC, COP2),        instr(Invalid, COP),      // seventh column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),
+    instr(SWC, COP0),          instr(Invalid, COP),     instr(SWC, COP2),        instr(Invalid, COP),      // eigth column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),
   };
   static constexpr std::array<interpreterfp, 64> secondaryTable = {
-    instr(Shift, SLL),         instr(Invalid, NA),      instr(Shift, SRL),      instr(Shift, SRA),       // first column
+    instr(Shift, SLL),         instr(Invalid, NA),      instr(Shift, SRL),      instr(Shift, SRA),         // first column
     instr(Shift, SLLV),        instr(Invalid, NA),      instr(Shift, SRLV),     instr(Shift, SRAV),  
-    instr(Jump, JR),           instr(Jump, JALR),       instr(Invalid, NA),     instr(Invalid, NA),      // second column
+    instr(Jump, JR),           instr(Jump, JALR),       instr(Invalid, NA),     instr(Invalid, NA),        // second column
     instr(Exception, SYSCALL), instr(Exception, BREAK), instr(Invalid, NA),     instr(Invalid, NA), 
-    instr(MulDiv, MFHI),       instr(MulDiv, MTHI),     instr(MulDiv, MFLO),    instr(MulDiv, MTLO),     // third column
+    instr(MulDiv, MFHI),       instr(MulDiv, MTHI),     instr(MulDiv, MFLO),    instr(MulDiv, MTLO),       // third column
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(MulDiv, MULT),       instr(MulDiv, MULTU),    instr(MulDiv, DIV),     instr(MulDiv, DIVU),     // fourth column
+    instr(MulDiv, MULT),       instr(MulDiv, MULTU),    instr(MulDiv, DIV),     instr(MulDiv, DIVU),       // fourth column
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Arithmetic, ADD),    instr(Arithmetic, ADDU), instr(Arithmetic, SUB), instr(Arithmetic, SUBU), // fifth column
+    instr(Arithmetic, ADD),    instr(Arithmetic, ADDU), instr(Arithmetic, SUB), instr(Arithmetic, SUBU),   // fifth column
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Comparison, SLT), instr(Comparison, SLTU), // sixth column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Comparison, SLT), instr(Comparison, SLTU),   // sixth column
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),      // seventh column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),        // seventh column
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),      // eigth column
+    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),        // eigth column
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
   };
 // clang-format on
