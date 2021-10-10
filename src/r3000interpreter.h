@@ -118,11 +118,9 @@ public:
   template <ULoadStore T>
   static void ULoadStoreInstruction(State &state, Instruction instr) {
     if constexpr (ValueIsIn(T, ULoadStore::LWL, ULoadStore::LWR)) {
-
     }
 
     if constexpr (ValueIsIn(T, ULoadStore::SWL, ULoadStore::SWR)) {
-      
     }
   }
 
@@ -342,76 +340,67 @@ public:
     if constexpr (T == Branch::BEQ) {
       if (rsReg == state.GetGPR(instr.i.rt)) {
         state.nextPC = value;
-      } else if constexpr (T == Branch::BNE) {
-        if (rsReg != state.GetGPR(instr.i.rt)) {
-          state.nextPC = value;
-        }
-      } else if constexpr (T == Branch::BLTZ) {
-        if (rsReg < 0) {
-          state.nextPC = value;
-        }
-      } else if constexpr (T == Branch::BGEZ) {
-        if (rsReg >= 0) {
-          state.nextPC = value;
-        }
-      } else if constexpr (T == Branch::BGTZ) {
-        if (rsReg > 0) {
-          state.nextPC = value;
-        }
-      } else if constexpr (T == Branch::BLEZ) {
-        if (rsReg <= 0) {
-          state.nextPC = value;
-        }
-      } else if constexpr (T == Branch::BLTZAL) {
-        if (rsReg < 0) {
-          state.nextPC = value;
-          state.SetGPR(31, state.pc + 4);
-        }
-      } else if constexpr (T == Branch::BGEZAL) {
-        if (rsReg >= 0) {
-          state.nextPC = value;
-          state.SetGPR(31, state.pc + 4);
-        }
+      }
+    } else if constexpr (T == Branch::BNE) {
+      if (rsReg != state.GetGPR(instr.i.rt)) {
+        state.nextPC = value;
+      }
+    } else if constexpr (T == Branch::BLTZ) {
+      if (rsReg < 0) {
+        state.nextPC = value;
+      }
+    } else if constexpr (T == Branch::BGEZ) {
+      if (rsReg >= 0) {
+        state.nextPC = value;
+      }
+    } else if constexpr (T == Branch::BGTZ) {
+      if (rsReg > 0) {
+        state.nextPC = value;
+      }
+    } else if constexpr (T == Branch::BLEZ) {
+      if (rsReg <= 0) {
+        state.nextPC = value;
+      }
+    } else if constexpr (T == Branch::BLTZAL) {
+      if (rsReg < 0) {
+        state.nextPC = value;
+        state.SetGPR(31, state.pc + 4);
+      }
+    } else if constexpr (T == Branch::BGEZAL) {
+      if (rsReg >= 0) {
+        state.nextPC = value;
+        state.SetGPR(31, state.pc + 4);
       }
     }
   }
 
   // TODO: some sort of base class for COP0 and COP2 that the user implements
-  template<COP T>
-  static void COPInstruction(State& state, Instruction instr) {
+  template <COP T> static void COPInstruction(State &state, Instruction instr) {
     // mfc, mtc, rfe
     if constexpr (T == COP::COP0) {
-
     }
 
     if constexpr (T == COP::COP2) {
-
     }
 
     fmt::print("[COP] Not Implemented Yet!\n");
   }
 
-  template<LWC T>
-  static void LWCInstruction(State& state, Instruction instr) {
+  template <LWC T> static void LWCInstruction(State &state, Instruction instr) {
     if constexpr (T == LWC::COP0) {
-
     }
 
     if constexpr (T == LWC::COP2) {
-
     }
 
     fmt::print("[COP] Not Implemented Yet!\n");
   }
 
-  template<SWC T>
-  static void SWCInstruction(State& state, Instruction instr) {
+  template <SWC T> static void SWCInstruction(State &state, Instruction instr) {
     if constexpr (T == SWC::COP0) {
-
     }
 
     if constexpr (T == SWC::COP2) {
-
     }
 
     fmt::print("[COP] Not Implemented Yet!\n");
