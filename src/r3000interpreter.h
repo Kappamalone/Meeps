@@ -83,6 +83,7 @@ public:
   // TODO: load delays maybe?
   template <ALoad T>
   static void ALoadInstruction(State &state, Instruction instr) {
+    //TODO: unaligned addr exception
     uint32_t value;
     uint32_t dest = instr.i.rt;
     uint32_t addr = state.GetGPR(instr.i.rs) + instr.i.imm;
@@ -104,6 +105,7 @@ public:
 
   template <AStore T>
   static void AStoreInstruction(State &state, Instruction instr) {
+    //TODO: unaligned addr exception
     uint32_t value = state.GetGPR(instr.i.rt);
     uint32_t addr = state.GetGPR(instr.i.rs) + instr.i.imm;
     if constexpr (T == AStore::SB) {
@@ -122,6 +124,9 @@ public:
 
     if constexpr (ValueIsIn(T, ULoadStore::SWL, ULoadStore::SWR)) {
     }
+
+    fmt::print("[Unaligned Load Store] Unimplemented!");
+    exit(1);
   }
 
   template <Arithmetic T>
@@ -384,6 +389,7 @@ public:
     }
 
     fmt::print("[COP] Not Implemented Yet!\n");
+    exit(1);
   }
 
   template <LWC T> static void LWCInstruction(State &state, Instruction instr) {
@@ -394,6 +400,7 @@ public:
     }
 
     fmt::print("[COP] Not Implemented Yet!\n");
+    exit(1);
   }
 
   template <SWC T> static void SWCInstruction(State &state, Instruction instr) {
@@ -404,6 +411,7 @@ public:
     }
 
     fmt::print("[COP] Not Implemented Yet!\n");
+    exit(1);
   }
 
   template <Exception T>

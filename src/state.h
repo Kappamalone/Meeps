@@ -6,9 +6,15 @@ namespace Meeps {
 struct State {
 public:
   State() {
+    Reset();
+  }
+
+  void Reset() {
     gpr.fill(0);
     pc = 0;
     nextPC = 0;
+    hi = 0;
+    lo = 0;
   }
 
   // Two PC's are used to deal with branch delays

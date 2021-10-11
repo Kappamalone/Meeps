@@ -3,22 +3,68 @@
 #include <fmt/core.h>
 #include <r3000.h>
 #include <r3000interpreter.h>
+#include "unicorn_emu.h"
 
 using namespace Meeps;
 
 static CPU r3000{CPUMode::Interpreter};
-static TestMemory mem{};
+static TestMemory memory{};
 static auto &state = r3000.GetState();
+static auto uemu = UnicornMIPS();
+
+static bool CompareRegisters(uint32_t* meepsRegs, uint32_t* unicornRegs) {
+  for (auto i = 0; i < 32; i++) {
+    if (!(meepsRegs[i] == unicornRegs[i])) {
+      fmt::print("Aborting on mismatched reg [0x{:02}] !\n", i);
+      return false;
+    }
+  }
+  return true;
+}
+
+TEST_CASE("Unicorn Comparison") {
+  r3000.SetMemoryPointer(&memory);
+  r3000.SetReadPointer(&TestMemory::read<uint8_t>);
+  r3000.SetWritePointer(&TestMemory::write<uint8_t>);
+  r3000.SetReadPointer(&TestMemory::read<uint16_t>);
+  r3000.SetWritePointer(&TestMemory::write<uint16_t>);
+  r3000.SetReadPointer(&TestMemory::read<uint32_t>);
+  r3000.SetWritePointer(&TestMemory::write<uint32_t>);
+
+  SUBCASE("Sanity Test") {
+    r3000.Reset();
+    memory.Reset();
+
+    memory.write<uint32_t>(&memory, 0, 0x3c080013); // lui $8 , 0x13
+    r3000.Run(1);
+    uint32_t* regs = uemu.ExecuteInstructions(memory.mem.data(), 4);
+
+    REQUIRE(CompareRegisters(state.gpr.data(), regs));
+  }
+
+  SUBCASE("Logical Instruction Tests") {
+    r3000.Reset();
+    memory.Reset();
+
+    Instruction shiftImm = 0;
+    shiftImm.r.op = 0;
+    shiftImm.r.rs = 0;
+    shiftImm.r.rt = 0; //TODO: random
+    shiftImm.r.rd = 0; //TODO: random
+    shiftImm.r.shamt = 0; // TODO: random
+    shiftImm.r.func = 0; //TODO: random lower 2 bits
+
+    // TODO: fuzz like, 10,000 instructions per group and test (except maybe jumps?)
+
+    //memory.write<uint32_t>(&memory, 0, 0x3c080013); // lui $8 , 0x13
+    //r3000.Run(1);
+    //uint32_t* regs = uemu.ExecuteInstructions(memory.mem.data(), 4);
+
+    //REQUIRE(CompareRegisters(state.gpr.data(), regs));
+  }
+}
 
 TEST_CASE("Basic CPU Instructions") {
-  // r3000.SetMemoryPointer(&mem);
-  // r3000.SetReadPointer(&TestMemory::read<uint8_t>);
-  // r3000.SetWritePointer(&TestMemory::write<uint8_t>);
-  // r3000.SetReadPointer(&TestMemory::read<uint16_t>);
-  // r3000.SetWritePointer(&TestMemory::write<uint16_t>);
-  // r3000.SetReadPointer(&TestMemory::read<uint32_t>);
-  // r3000.SetWritePointer(&TestMemory::write<uint32_t>);
-
   // and $4 , $2 , $1
   state.SetGPR(0x1, 0xff0f);
   state.SetGPR(0x2, 0x30f);

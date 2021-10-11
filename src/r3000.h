@@ -21,6 +21,10 @@ public:
     }
   }
 
+  void Reset() {
+    state.Reset();
+  }
+
   State &GetState() { return state; }
 
   void SetPC(uint32_t pc) {
