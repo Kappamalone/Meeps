@@ -14,9 +14,9 @@ static TestMemory memory{};
 static auto &state = r3000.GetState();
 static auto uemu = UnicornMIPS();
 static auto rnum = [](int lower, int upper) {
-    static std::mt19937 rng(
-        std::chrono::steady_clock::now().time_since_epoch().count());
-    return std::uniform_int_distribution<uint32_t>(lower, upper)(rng);
+  static std::mt19937 rng(
+      std::chrono::steady_clock::now().time_since_epoch().count());
+  return std::uniform_int_distribution<uint32_t>(lower, upper)(rng);
 };
 
 static bool CompareRegisters(uint32_t *meepsRegs, uint32_t *unicornRegs,
@@ -82,6 +82,41 @@ TEST_CASE("Unicorn Comparison") {
         shiftImm.r.func = funcs[rnum(0, 2)]; // random lower 2 bits
         memory.write<uint32_t>(&memory, i * 4, shiftImm.value);
         fmt::print("Writing Instruction: 0x{:08X}\n", shiftImm.value);
+      }
+
+      r3000.Run(instrCount);
+      uint32_t *regs =
+          uemu.ExecuteInstructions(memory.mem.data(), instrCount * 4);
+      REQUIRE(CompareRegisters(state.gpr.data(), regs, true));
+    }
+  }
+
+  SUBCASE("Shift-Reg Instruction Tests") {
+    for (auto i = 0; i < 10; i++) {
+      r3000.Reset();
+      uemu.Reset();
+      memory.Reset();
+      auto instrCount = 100;
+
+      for (auto i = 0; i < 32; i++) {
+        uint32_t value = rnum(0, 0xffffffff);
+        state.SetGPR(i, value);
+        uemu.SetGPR(i, value);
+      }
+      
+      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), true));
+
+      size_t funcs[] = {4, 6, 7};
+      Instruction shiftReg = 0;
+      shiftReg.r.op = 0;
+
+      for (auto i = 0; i < instrCount; i++) {
+        shiftReg.r.rs = rnum(0, 0x1f);       // random 5 bits
+        shiftReg.r.rt = rnum(0, 0x1f);       // random 5 bits
+        shiftReg.r.rd = rnum(0, 0x1f);       // random 5 bits
+        shiftReg.r.func = 0b100 | funcs[rnum(0, 2)]; // random lower 2 bits
+        memory.write<uint32_t>(&memory, i * 4, shiftReg.value);
+        fmt::print("Writing Instruction: 0x{:08X}\n", shiftReg.value);
       }
 
       r3000.Run(instrCount);
