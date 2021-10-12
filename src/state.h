@@ -12,7 +12,7 @@ public:
   void Reset() {
     gpr.fill(0);
     pc = 0;
-    nextPC = 0;
+    nextPC = pc + 4;
     hi = 0;
     lo = 0;
   }

@@ -1,9 +1,11 @@
 #include "test_memory.h"
+#include "unicorn_emu.h"
+#include <chrono>
 #include <doctest.h>
 #include <fmt/core.h>
 #include <r3000.h>
 #include <r3000interpreter.h>
-#include "unicorn_emu.h"
+#include <random>
 
 using namespace Meeps;
 
@@ -11,15 +13,26 @@ static CPU r3000{CPUMode::Interpreter};
 static TestMemory memory{};
 static auto &state = r3000.GetState();
 static auto uemu = UnicornMIPS();
+static auto rnum = [](int lower, int upper) {
+    static std::mt19937 rng(
+        std::chrono::steady_clock::now().time_since_epoch().count());
+    return std::uniform_int_distribution<uint32_t>(lower, upper)(rng);
+};
 
-static bool CompareRegisters(uint32_t* meepsRegs, uint32_t* unicornRegs) {
+static bool CompareRegisters(uint32_t *meepsRegs, uint32_t *unicornRegs,
+                             bool printRegs) {
+  auto success = true;
   for (auto i = 0; i < 32; i++) {
     if (!(meepsRegs[i] == unicornRegs[i])) {
-      fmt::print("Aborting on mismatched reg [0x{:02}] !\n", i);
-      return false;
+      success = false;
+      fmt::print("DIFF ");
     }
+
+    if (printRegs)
+      fmt::print("Meeps r{}: 0x{:08X}, Unicorn r{}: 0x{:08X}\n", i,
+                 meepsRegs[i], i, unicornRegs[i]);
   }
-  return true;
+  return success;
 }
 
 TEST_CASE("Unicorn Comparison") {
@@ -37,30 +50,45 @@ TEST_CASE("Unicorn Comparison") {
 
     memory.write<uint32_t>(&memory, 0, 0x3c080013); // lui $8 , 0x13
     r3000.Run(1);
-    uint32_t* regs = uemu.ExecuteInstructions(memory.mem.data(), 4);
+    uint32_t *regs = uemu.ExecuteInstructions(memory.mem.data(), 4);
 
-    REQUIRE(CompareRegisters(state.gpr.data(), regs));
+    REQUIRE(CompareRegisters(state.gpr.data(), regs, false));
   }
 
-  SUBCASE("Logical Instruction Tests") {
-    r3000.Reset();
-    memory.Reset();
+  SUBCASE("Shift-Imm Instruction Tests") {
+    for (auto i = 0; i < 10; i++) {
+      r3000.Reset();
+      uemu.Reset();
+      memory.Reset();
+      auto instrCount = 100;
 
-    Instruction shiftImm = 0;
-    shiftImm.r.op = 0;
-    shiftImm.r.rs = 0;
-    shiftImm.r.rt = 0; //TODO: random
-    shiftImm.r.rd = 0; //TODO: random
-    shiftImm.r.shamt = 0; // TODO: random
-    shiftImm.r.func = 0; //TODO: random lower 2 bits
+      for (auto i = 0; i < 32; i++) {
+        uint32_t value = rnum(0, 0xffffffff);
+        state.SetGPR(i, value);
+        uemu.SetGPR(i, value);
+      }
 
-    // TODO: fuzz like, 10,000 instructions per group and test (except maybe jumps?)
+      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), true));
 
-    //memory.write<uint32_t>(&memory, 0, 0x3c080013); // lui $8 , 0x13
-    //r3000.Run(1);
-    //uint32_t* regs = uemu.ExecuteInstructions(memory.mem.data(), 4);
+      size_t funcs[] = {0, 2, 3};
+      Instruction shiftImm = 0;
+      shiftImm.r.op = 0;
+      shiftImm.r.rs = 0;
 
-    //REQUIRE(CompareRegisters(state.gpr.data(), regs));
+      for (auto i = 0; i < instrCount; i++) {
+        shiftImm.r.rt = rnum(0, 0x1f);       // random 5 bits
+        shiftImm.r.rd = rnum(0, 0x1f);       // random 5 bits
+        shiftImm.r.shamt = rnum(0, 0x1f);    // random 5 bits
+        shiftImm.r.func = funcs[rnum(0, 2)]; // random lower 2 bits
+        memory.write<uint32_t>(&memory, i * 4, shiftImm.value);
+        fmt::print("Writing Instruction: 0x{:08X}\n", shiftImm.value);
+      }
+
+      r3000.Run(instrCount);
+      uint32_t *regs =
+          uemu.ExecuteInstructions(memory.mem.data(), instrCount * 4);
+      REQUIRE(CompareRegisters(state.gpr.data(), regs, true));
+    }
   }
 }
 

@@ -42,8 +42,8 @@ union Instruction {
 
   // Immediate type opcodes
   struct {
-    unsigned imm : 16; // 0  - 15
-    unsigned rt : 5;   // 16 - 20
+    unsigned imm : 16;
+    unsigned rt : 5;
     unsigned rs : 5;
     unsigned op : 6;
   } i;
@@ -226,13 +226,13 @@ public:
     uint32_t value = state.GetGPR(instr.i.rt);
 
     if constexpr (ValueIsIn(T, Shift::SLL, Shift::SRL, Shift::SRA)) {
-      operand = instr.i.rs; // rs is shift amount for shift instructions
+      operand = instr.r.shamt;
     } else {
       operand = state.GetGPR(instr.i.rs) & 0x1f;
     }
 
     if constexpr (ValueIsIn(T, Shift::SRA, Shift::SRAV)) {
-      value = (int32_t)value >> operand;
+      value = ((int32_t)value) >> operand;
     }
 
     if constexpr (ValueIsIn(T, Shift::SLL, Shift::SLLV)) {

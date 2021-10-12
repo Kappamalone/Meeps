@@ -1,12 +1,10 @@
 #include "types.h"
 #include <array>
 
-static constexpr int KILOBYTE = 1024;
-
 // Assumed to be in little endian format
 class TestMemory {
 public:
-  std::array<uint8_t, KILOBYTE> mem;
+  std::array<uint8_t, 2 * 1024 * 1024> mem;
 
   TestMemory() { Reset(); }
 
