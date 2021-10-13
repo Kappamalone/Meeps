@@ -6,6 +6,7 @@
 #include <r3000.h>
 #include <r3000interpreter.h>
 #include <random>
+#include <vector>
 
 using namespace Meeps;
 
@@ -13,14 +14,16 @@ static CPU r3000{CPUMode::Interpreter};
 static TestMemory memory{};
 static auto &state = r3000.GetState();
 static auto uemu = UnicornMIPS();
-static auto rnum = [](int lower, int upper) {
+
+// Helper functions
+static auto rnum = [](int lower, int upper) { // both inclusive
   static std::mt19937 rng(
       std::chrono::steady_clock::now().time_since_epoch().count());
   return std::uniform_int_distribution<uint32_t>(lower, upper)(rng);
 };
 
-static bool CompareRegisters(uint32_t *meepsRegs, uint32_t *unicornRegs,
-                             bool printRegs) {
+static auto CompareRegisters = [](uint32_t *meepsRegs, uint32_t *unicornRegs,
+                                  bool printRegs) {
   auto success = true;
   for (auto i = 0; i < 32; i++) {
     if (!(meepsRegs[i] == unicornRegs[i])) {
@@ -33,7 +36,7 @@ static bool CompareRegisters(uint32_t *meepsRegs, uint32_t *unicornRegs,
                  meepsRegs[i], i, unicornRegs[i]);
   }
   return success;
-}
+};
 
 TEST_CASE("Unicorn Comparison") {
   r3000.SetMemoryPointer(&memory);
@@ -70,18 +73,17 @@ TEST_CASE("Unicorn Comparison") {
 
       REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
 
-      std::array<size_t,3> funcs = {0, 2, 3};
+      std::vector<size_t> funcs = {0, 2, 3};
       Instruction instr = 0;
       instr.r.op = 0;
       instr.r.rs = 0;
 
       for (auto i = 0; i < instrCount; i++) {
-        instr.r.rt = rnum(0, 0x1f);       // random 5 bits
-        instr.r.rd = rnum(0, 0x1f);       // random 5 bits
-        instr.r.shamt = rnum(0, 0x1f);    // random 5 bits
-        instr.r.func = funcs[rnum(0, funcs.size()-1)]; // random lower 2 bits
+        instr.r.rt = rnum(0, 0x1f);                      // random 5 bits
+        instr.r.rd = rnum(0, 0x1f);                      // random 5 bits
+        instr.r.shamt = rnum(0, 0x1f);                   // random 5 bits
+        instr.r.func = funcs[rnum(0, funcs.size() - 1)]; // random lower 2 bits
         memory.write<uint32_t>(&memory, i * 4, instr.value);
-        fmt::print("Writing Instruction: 0x{:08X}\n", instr.value);
       }
 
       r3000.Run(instrCount);
@@ -103,20 +105,20 @@ TEST_CASE("Unicorn Comparison") {
         state.SetGPR(i, value);
         uemu.SetGPR(i, value);
       }
-      
+
       REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
 
-      std::array<size_t, 3> funcs = {4, 6, 7};
+      std::vector<size_t> funcs = {4, 6, 7};
       Instruction instr = 0;
       instr.r.op = 0;
 
       for (auto i = 0; i < instrCount; i++) {
-        instr.r.rs = rnum(0, 0x1f);       // random 5 bits
-        instr.r.rt = rnum(0, 0x1f);       // random 5 bits
-        instr.r.rd = rnum(0, 0x1f);       // random 5 bits
-        instr.r.func = 0b100 | funcs[rnum(0, funcs.size() - 1)]; // random lower 2 bits
+        instr.r.rs = rnum(0, 0x1f); // random 5 bits
+        instr.r.rt = rnum(0, 0x1f); // random 5 bits
+        instr.r.rd = rnum(0, 0x1f); // random 5 bits
+        instr.r.func =
+            0b100 | funcs[rnum(0, funcs.size() - 1)]; // random lower 2 bits
         memory.write<uint32_t>(&memory, i * 4, instr.value);
-        fmt::print("Writing Instruction: 0x{:08X}\n", instr.value);
       }
 
       r3000.Run(instrCount);
@@ -138,22 +140,55 @@ TEST_CASE("Unicorn Comparison") {
         state.SetGPR(i, value);
         uemu.SetGPR(i, value);
       }
-      
+
       REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
 
-      // TODO: Unicorn fails on 0 (ADD), 2 (SUB), 
-      //std::array<size_t,10> funcs = {0,1,2,3,4,5,6,7,0xA,0xB};
-      std::array<size_t,8> funcs = {1,3,4,5,6,7,0xA,0xB};
+      // TODO: Unicorn fails on 0 (ADD), 2 (SUB),
+      // std::array<size_t,10> funcs = {0,1,2,3,4,5,6,7,0xA,0xB};
+      std::vector<size_t> funcs = {1, 3, 4, 5, 6, 7, 0xA, 0xB};
       Instruction instr = 0;
       instr.r.op = 0;
 
       for (auto i = 0; i < instrCount; i++) {
-        instr.r.rs = rnum(0, 0x1f);       // random 5 bits
-        instr.r.rt = rnum(0, 0x1f);       // random 5 bits
-        instr.r.rd = rnum(0, 0x1f);       // random 5 bits
-        instr.r.func = 0b10'0000 | funcs[rnum(0, funcs.size()-1)]; // random lower 4 bits
+        instr.r.rs = rnum(0, 0x1f); // random 5 bits
+        instr.r.rt = rnum(0, 0x1f); // random 5 bits
+        instr.r.rd = rnum(0, 0x1f); // random 5 bits
+        instr.r.func =
+            0b10'0000 | funcs[rnum(0, funcs.size() - 1)]; // random lower 4 bits
         memory.write<uint32_t>(&memory, i * 4, instr.value);
-        fmt::print("Writing Instruction: 0x{:08X}\n", instr.value);
+      }
+
+      r3000.Run(instrCount);
+      uint32_t *regs =
+          uemu.ExecuteInstructions(memory.mem.data(), instrCount * 4);
+      REQUIRE(CompareRegisters(state.gpr.data(), regs, true));
+    }
+  }
+
+  SUBCASE("ALU-imm Instruction Tests") {
+    for (auto i = 0; i < 10; i++) {
+      r3000.Reset();
+      uemu.Reset();
+      memory.Reset();
+      auto instrCount = 100;
+
+      for (auto i = 0; i < 32; i++) {
+        uint32_t value = rnum(0, 0xffffffff);
+        state.SetGPR(i, value);
+        uemu.SetGPR(i, value);
+      }
+
+      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
+
+      Instruction instr = 0;
+      std::vector<size_t> funcs = {0, 1, 2, 3, 4, 5, 6, 7};
+
+      for (auto i = 0; i < instrCount; i++) {
+        instr.r.op = 0b00'1000 | funcs[rnum(0, funcs.size() - 1)];
+        instr.i.rs = rnum(0, 0x1f);
+        instr.i.rt = rnum(0, 0x1f);
+        instr.i.imm = rnum(0, 0xffff);
+        memory.write<uint32_t>(&memory, i * 4, instr.value);
       }
 
       r3000.Run(instrCount);
@@ -175,17 +210,16 @@ TEST_CASE("Unicorn Comparison") {
         state.SetGPR(i, value);
         uemu.SetGPR(i, value);
       }
-      
+
       REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
 
       Instruction instr = 0;
       instr.r.op = 0b001111;
 
       for (auto i = 0; i < instrCount; i++) {
-        instr.i.rt = rnum(0,0x1f);
-        instr.i.imm = rnum(0,0xffff);
+        instr.i.rt = rnum(0, 0x1f);
+        instr.i.imm = rnum(0, 0xffff);
         memory.write<uint32_t>(&memory, i * 4, instr.value);
-        fmt::print("Writing Instruction: 0x{:08X}\n", instr.value);
       }
 
       r3000.Run(instrCount);
@@ -194,43 +228,4 @@ TEST_CASE("Unicorn Comparison") {
       REQUIRE(CompareRegisters(state.gpr.data(), regs, true));
     }
   }
-}
-
-TEST_CASE("Basic CPU Instructions") {
-  // and $4 , $2 , $1
-  state.SetGPR(0x1, 0xff0f);
-  state.SetGPR(0x2, 0x30f);
-  R3000Interpreter::LogicalInstruction<Logical::AND>(state, 0x00412024);
-  REQUIRE(state.GetGPR(4) == 0x30f);
-
-  // andi $4 , $4 , 0xff
-  R3000Interpreter::LogicalInstruction<Logical::ANDI>(state, 0x308400ff);
-  REQUIRE(state.GetGPR(4) == 0xf);
-
-  // lui $8 , 0x13
-  R3000Interpreter::ShiftInstruction<Shift::LUI>(state, 0x3c080013);
-  REQUIRE(state.GetGPR(8) == 0x00130000);
-
-  // sllv $25, $24, $3
-  state.SetGPR(3, 0x2); // Set shift amount to 2
-  state.SetGPR(24, 0x100);
-  R3000Interpreter::ShiftInstruction<Shift::SLLV>(state, 0x0078c804);
-  REQUIRE(state.GetGPR(25) == 0x400);
-
-  // srav $8 , $8 , $7
-  state.SetGPR(7, 0x3);
-  state.SetGPR(8, 0x80000000);
-  R3000Interpreter::ShiftInstruction<Shift::SRAV>(state, 0x00e84007);
-  REQUIRE(state.GetGPR(8) == 0xf0000000);
-
-  // slt $1 , $25 , $24
-  state.SetGPR(25, 10);
-  state.SetGPR(24, 12);
-  R3000Interpreter::ComparisonInstruction<Comparison::SLT>(state, 0x0338082a);
-  REQUIRE(state.GetGPR(1) == 1);
-
-  state.SetGPR(25, -12);
-  state.SetGPR(24, -9);
-  R3000Interpreter::ComparisonInstruction<Comparison::SLT>(state, 0x0338082a);
-  REQUIRE(state.GetGPR(1) == 1);
 }

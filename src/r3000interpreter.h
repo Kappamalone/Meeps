@@ -3,6 +3,7 @@
 #include "fmt/core.h"
 #include "state.h"
 #include <array>
+#include <stdint.h>
 
 namespace Meeps {
 
@@ -86,7 +87,7 @@ public:
     //TODO: unaligned addr exception
     uint32_t value;
     uint32_t dest = instr.i.rt;
-    uint32_t addr = state.GetGPR(instr.i.rs) + instr.i.imm;
+    uint32_t addr = state.GetGPR(instr.i.rs) + (int32_t)(int16_t)instr.i.imm;
 
     if constexpr (T == ALoad::LB) {
       value = (int32_t)(int8_t)state.read8(addr);
@@ -107,7 +108,7 @@ public:
   static void AStoreInstruction(State &state, Instruction instr) {
     //TODO: unaligned addr exception
     uint32_t value = state.GetGPR(instr.i.rt);
-    uint32_t addr = state.GetGPR(instr.i.rs) + instr.i.imm;
+    uint32_t addr = state.GetGPR(instr.i.rs) + (int32_t)(int16_t)instr.i.imm;
     if constexpr (T == AStore::SB) {
       state.write8(addr, value & 0xff);
     } else if constexpr (T == AStore::SH) {
@@ -150,7 +151,7 @@ public:
     } else {
       // unsigned
       // TODO: check ternary constexpr stuff on godbolt
-      operand = T == Arithmetic::ADDIU ? instr.i.imm : state.GetGPR(instr.i.rt);
+      operand = T == Arithmetic::ADDIU ? (int32_t)(int16_t)instr.i.imm : state.GetGPR(instr.i.rt);
     }
 
     if constexpr (ValueIsIn(T, Arithmetic::SUB, Arithmetic::SUBU)) {
@@ -173,7 +174,7 @@ public:
       operand = state.GetGPR(instr.i.rt);
     } else {
       dest = instr.i.rt;
-      operand = (uint32_t)(uint16_t)instr.i.imm;
+      operand = (int32_t)(int16_t)instr.i.imm;
     }
 
     if constexpr (ValueIsIn(T, Comparison::SLT, Comparison::SLTI)) {
@@ -340,7 +341,7 @@ public:
   template <Branch T>
   static void BranchInstruction(State &state, Instruction instr) {
     uint32_t rsReg = state.GetGPR(instr.i.rs);
-    uint32_t value = state.pc + (instr.i.imm * 4);
+    uint32_t value = state.pc + ((int32_t)(int16_t)instr.i.imm * 4);
 
     if constexpr (T == Branch::BEQ) {
       if (rsReg == state.GetGPR(instr.i.rt)) {
@@ -451,40 +452,40 @@ private:
 
   // clang-format off
   static constexpr std::array<interpreterfp, 64> primaryTable = {
-    SecondaryTableLookup,      BCondZ,                  instr(Jump, J),          instr(Jump, JAL),         // first column
-    instr(Branch, BEQ),        instr(Branch, BNE),      instr(Branch, BLEZ),     instr(Branch, BGTZ),
-    instr(Arithmetic, ADDI),   instr(Arithmetic, ADDI), instr(Comparison, SLTI), instr(Comparison, SLTIU), // second column
-    instr(Logical, ANDI),      instr(Logical, ORI),     instr(Logical, XORI),    instr(Shift, LUI),
-    instr(COP, COP0),          instr(Invalid, COP),     instr(COP,COP2),         instr(Invalid, NA),       // third column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),       // fourth column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),
-    instr(ALoad, LB),          instr(ALoad, LH),        instr(ULoadStore, LWL),  instr(ALoad, LW),         // fifth column
-    instr(ALoad, LBU),         instr(ALoad, LHU),       instr(ULoadStore, LWR),  instr(Invalid, NA),
-    instr(AStore, SB),         instr(AStore, SH),       instr(ULoadStore, SWL),  instr(AStore, SW),        // sixth column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(ULoadStore, SWR),  instr(Invalid, NA),
-    instr(LWC, COP0),          instr(Invalid, COP),     instr(LWC, COP2),        instr(Invalid, COP),      // seventh column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),
-    instr(SWC, COP0),          instr(Invalid, COP),     instr(SWC, COP2),        instr(Invalid, COP),      // eigth column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),      instr(Invalid, NA),
+    SecondaryTableLookup,      BCondZ,                   instr(Jump, J),          instr(Jump, JAL),         // first column
+    instr(Branch, BEQ),        instr(Branch, BNE),       instr(Branch, BLEZ),     instr(Branch, BGTZ),
+    instr(Arithmetic, ADDI),   instr(Arithmetic, ADDIU), instr(Comparison, SLTI), instr(Comparison, SLTIU), // second column
+    instr(Logical, ANDI),      instr(Logical, ORI),      instr(Logical, XORI),    instr(Shift, LUI),
+    instr(COP, COP0),          instr(Invalid, COP),      instr(COP,COP2),         instr(Invalid, NA),       // third column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),      instr(Invalid, NA),
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),      instr(Invalid, NA),       // fourth column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),      instr(Invalid, NA),
+    instr(ALoad, LB),          instr(ALoad, LH),         instr(ULoadStore, LWL),  instr(ALoad, LW),         // fifth column
+    instr(ALoad, LBU),         instr(ALoad, LHU),        instr(ULoadStore, LWR),  instr(Invalid, NA),
+    instr(AStore, SB),         instr(AStore, SH),        instr(ULoadStore, SWL),  instr(AStore, SW),        // sixth column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(ULoadStore, SWR),  instr(Invalid, NA),
+    instr(LWC, COP0),          instr(Invalid, COP),      instr(LWC, COP2),        instr(Invalid, COP),      // seventh column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),      instr(Invalid, NA),
+    instr(SWC, COP0),          instr(Invalid, COP),      instr(SWC, COP2),        instr(Invalid, COP),      // eigth column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),      instr(Invalid, NA),
   };
   static constexpr std::array<interpreterfp, 64> secondaryTable = {
-    instr(Shift, SLL),         instr(Invalid, NA),      instr(Shift, SRL),      instr(Shift, SRA),         // first column
-    instr(Shift, SLLV),        instr(Invalid, NA),      instr(Shift, SRLV),     instr(Shift, SRAV),  
-    instr(Jump, JR),           instr(Jump, JALR),       instr(Invalid, NA),     instr(Invalid, NA),        // second column
-    instr(Exception, SYSCALL), instr(Exception, BREAK), instr(Invalid, NA),     instr(Invalid, NA), 
-    instr(MulDiv, MFHI),       instr(MulDiv, MTHI),     instr(MulDiv, MFLO),    instr(MulDiv, MTLO),       // third column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(MulDiv, MULT),       instr(MulDiv, MULTU),    instr(MulDiv, DIV),     instr(MulDiv, DIVU),       // fourth column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Arithmetic, ADD),    instr(Arithmetic, ADDU), instr(Arithmetic, SUB), instr(Arithmetic, SUBU),   // fifth column
-    instr(Logical, AND),       instr(Logical, OR),      instr(Logical, XOR),    instr(Logical, NOR),
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Comparison, SLT), instr(Comparison, SLTU),   // sixth column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),        // seventh column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),        // eigth column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Shift, SLL),         instr(Invalid, NA),       instr(Shift, SRL),      instr(Shift, SRA),         // first column
+    instr(Shift, SLLV),        instr(Invalid, NA),       instr(Shift, SRLV),     instr(Shift, SRAV),  
+    instr(Jump, JR),           instr(Jump, JALR),        instr(Invalid, NA),     instr(Invalid, NA),        // second column
+    instr(Exception, SYSCALL), instr(Exception, BREAK),  instr(Invalid, NA),     instr(Invalid, NA), 
+    instr(MulDiv, MFHI),       instr(MulDiv, MTHI),      instr(MulDiv, MFLO),    instr(MulDiv, MTLO),       // third column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),     instr(Invalid, NA),
+    instr(MulDiv, MULT),       instr(MulDiv, MULTU),     instr(MulDiv, DIV),     instr(MulDiv, DIVU),       // fourth column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Arithmetic, ADD),    instr(Arithmetic, ADDU),  instr(Arithmetic, SUB), instr(Arithmetic, SUBU),   // fifth column
+    instr(Logical, AND),       instr(Logical, OR),       instr(Logical, XOR),    instr(Logical, NOR),
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Comparison, SLT), instr(Comparison, SLTU),   // sixth column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),     instr(Invalid, NA),        // seventh column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),     instr(Invalid, NA),        // eigth column
+    instr(Invalid, NA),        instr(Invalid, NA),       instr(Invalid, NA),     instr(Invalid, NA),
   };
 // clang-format on
 #undef instr
