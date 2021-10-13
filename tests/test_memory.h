@@ -4,7 +4,7 @@
 // Assumed to be in little endian format
 class TestMemory {
 public:
-  std::array<uint8_t, 2 * 1024 * 1024> mem;
+  std::array<uint8_t, 100 * 1024 * 1024> mem;
 
   TestMemory() { Reset(); }
 

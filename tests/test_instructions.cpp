@@ -10,10 +10,14 @@
 
 using namespace Meeps;
 
+// TODO: mul/div fuzzing, ustore/loads, coprocessor 0 interface, manual testing
+// for the rest of the opcodes
+
 static CPU r3000{CPUMode::Interpreter};
 static TestMemory memory{};
 static auto &state = r3000.GetState();
 static auto uemu = UnicornMIPS();
+static auto instrCount = 100000;
 
 // Helper functions
 static auto rnum = [](int lower, int upper) { // both inclusive
@@ -22,8 +26,7 @@ static auto rnum = [](int lower, int upper) { // both inclusive
   return std::uniform_int_distribution<uint32_t>(lower, upper)(rng);
 };
 
-static auto CompareRegisters = [](uint32_t *meepsRegs, uint32_t *unicornRegs,
-                                  bool printRegs) {
+static auto CompareRegisters = [](uint32_t *meepsRegs, uint32_t *unicornRegs) {
   auto success = true;
   for (auto i = 0; i < 32; i++) {
     if (!(meepsRegs[i] == unicornRegs[i])) {
@@ -31,11 +34,19 @@ static auto CompareRegisters = [](uint32_t *meepsRegs, uint32_t *unicornRegs,
       fmt::print("DIFF ");
     }
 
-    if (printRegs)
+    if (!success)
       fmt::print("Meeps r{}: 0x{:08X}, Unicorn r{}: 0x{:08X}\n", i,
                  meepsRegs[i], i, unicornRegs[i]);
   }
   return success;
+};
+
+static auto InitRegisters = []() {
+  for (auto i = 0; i < 32; i++) {
+    uint32_t value = rnum(0, 0xffffffff);
+    state.SetGPR(i, value);
+    uemu.SetGPR(i, value);
+  }
 };
 
 TEST_CASE("Unicorn Comparison") {
@@ -55,25 +66,21 @@ TEST_CASE("Unicorn Comparison") {
     r3000.Run(1);
     uint32_t *regs = uemu.ExecuteInstructions(memory.mem.data(), 4);
 
-    REQUIRE(CompareRegisters(state.gpr.data(), regs, false));
+    REQUIRE(CompareRegisters(state.gpr.data(), regs));
   }
 
   SUBCASE("Shift-Imm Instruction Tests") {
+    fmt::print("Shift-Imm Instruction Tests\n");
     for (auto i = 0; i < 10; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
-      auto instrCount = 100;
 
-      for (auto i = 0; i < 32; i++) {
-        uint32_t value = rnum(0, 0xffffffff);
-        state.SetGPR(i, value);
-        uemu.SetGPR(i, value);
-      }
+      InitRegisters();
 
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
+      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
-      std::vector<size_t> funcs = {0, 2, 3};
+      std::vector<size_t> funcs = {0x0, 0x2, 0x3};
       Instruction instr = 0;
       instr.r.op = 0;
       instr.r.rs = 0;
@@ -89,26 +96,21 @@ TEST_CASE("Unicorn Comparison") {
       r3000.Run(instrCount);
       uint32_t *regs =
           uemu.ExecuteInstructions(memory.mem.data(), instrCount * 4);
-      REQUIRE(CompareRegisters(state.gpr.data(), regs, true));
+      REQUIRE(CompareRegisters(state.gpr.data(), regs));
     }
   }
 
   SUBCASE("Shift-Reg Instruction Tests") {
+    fmt::print("Shift-Reg Instruction Tests\n");
     for (auto i = 0; i < 10; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
-      auto instrCount = 100;
+      InitRegisters();
 
-      for (auto i = 0; i < 32; i++) {
-        uint32_t value = rnum(0, 0xffffffff);
-        state.SetGPR(i, value);
-        uemu.SetGPR(i, value);
-      }
+      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
-
-      std::vector<size_t> funcs = {4, 6, 7};
+      std::vector<size_t> funcs = {0x4, 0x6, 0x7};
       Instruction instr = 0;
       instr.r.op = 0;
 
@@ -124,28 +126,23 @@ TEST_CASE("Unicorn Comparison") {
       r3000.Run(instrCount);
       uint32_t *regs =
           uemu.ExecuteInstructions(memory.mem.data(), instrCount * 4);
-      REQUIRE(CompareRegisters(state.gpr.data(), regs, true));
+      REQUIRE(CompareRegisters(state.gpr.data(), regs));
     }
   }
 
   SUBCASE("ALU-Reg Instruction Tests") {
+    fmt::print("ALU-Reg Instruction Tests\n");
     for (auto i = 0; i < 10; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
-      auto instrCount = 100;
+      InitRegisters();
 
-      for (auto i = 0; i < 32; i++) {
-        uint32_t value = rnum(0, 0xffffffff);
-        state.SetGPR(i, value);
-        uemu.SetGPR(i, value);
-      }
+      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
-
-      // TODO: Unicorn fails on 0 (ADD), 2 (SUB),
-      // std::array<size_t,10> funcs = {0,1,2,3,4,5,6,7,0xA,0xB};
-      std::vector<size_t> funcs = {1, 3, 4, 5, 6, 7, 0xA, 0xB};
+      // Can't test 0 (ADD) and 2 (SUB) due to overflow traps terminating
+      // unicorn execution
+      std::vector<size_t> funcs = {0x1, 0x3, 0x4, 0x5, 0x6, 0x7, 0xA, 0xB};
       Instruction instr = 0;
       instr.r.op = 0;
 
@@ -161,27 +158,23 @@ TEST_CASE("Unicorn Comparison") {
       r3000.Run(instrCount);
       uint32_t *regs =
           uemu.ExecuteInstructions(memory.mem.data(), instrCount * 4);
-      REQUIRE(CompareRegisters(state.gpr.data(), regs, true));
+      REQUIRE(CompareRegisters(state.gpr.data(), regs));
     }
   }
 
   SUBCASE("ALU-imm Instruction Tests") {
-    for (auto i = 0; i < 10; i++) {
+    fmt::print("ALU-Imm Instruction Tests\n");
+    for (auto i = 0; i < 100; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
-      auto instrCount = 100;
+      InitRegisters();
 
-      for (auto i = 0; i < 32; i++) {
-        uint32_t value = rnum(0, 0xffffffff);
-        state.SetGPR(i, value);
-        uemu.SetGPR(i, value);
-      }
+      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
-
+      // Can't test 0 (ADDI) due to overflow traps terminating unicorn execution
+      std::vector<size_t> funcs = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6};
       Instruction instr = 0;
-      std::vector<size_t> funcs = {0, 1, 2, 3, 4, 5, 6, 7};
 
       for (auto i = 0; i < instrCount; i++) {
         instr.r.op = 0b00'1000 | funcs[rnum(0, funcs.size() - 1)];
@@ -194,24 +187,19 @@ TEST_CASE("Unicorn Comparison") {
       r3000.Run(instrCount);
       uint32_t *regs =
           uemu.ExecuteInstructions(memory.mem.data(), instrCount * 4);
-      REQUIRE(CompareRegisters(state.gpr.data(), regs, true));
+      REQUIRE(CompareRegisters(state.gpr.data(), regs));
     }
   }
 
   SUBCASE("LUI-imm Instruction Tests") {
+    fmt::print("LUI-Imm Instruction Tests\n");
     for (auto i = 0; i < 10; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
-      auto instrCount = 100;
+      InitRegisters();
 
-      for (auto i = 0; i < 32; i++) {
-        uint32_t value = rnum(0, 0xffffffff);
-        state.SetGPR(i, value);
-        uemu.SetGPR(i, value);
-      }
-
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR(), false));
+      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
       Instruction instr = 0;
       instr.r.op = 0b001111;
@@ -225,7 +213,7 @@ TEST_CASE("Unicorn Comparison") {
       r3000.Run(instrCount);
       uint32_t *regs =
           uemu.ExecuteInstructions(memory.mem.data(), instrCount * 4);
-      REQUIRE(CompareRegisters(state.gpr.data(), regs, true));
+      REQUIRE(CompareRegisters(state.gpr.data(), regs));
     }
   }
 }

@@ -1,7 +1,6 @@
 #pragma once
 #include "fmt/core.h"
 #include <array>
-#include <stdint.h>
 #include <unicorn/unicorn.h>
 
 class UnicornMIPS {
@@ -41,7 +40,10 @@ public:
     if (err) {
       printf("Failed on uc_emu_start() with error returned: %u (%s)\n", err,
              uc_strerror(err));
-      exit(1);
+      uint32_t val;
+      uc_reg_read(uc, UC_MIPS_REG_PC, &val);
+      fmt::print("Unicorn PC: {:08X}\n", val);
+      //exit(1);
     }
 
     return GetAllGPR();
