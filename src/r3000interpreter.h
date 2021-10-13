@@ -4,7 +4,7 @@
 #include "state.h"
 #include <array>
 
-//TODO: debug log, throwing proper exceptions (like xbyak what() : )
+// TODO: debug log, throwing proper exceptions (like xbyak what() : )
 
 namespace Meeps {
 
@@ -72,9 +72,9 @@ using interpreterfp = void (*)(State &, Instruction);
 class R3000Interpreter {
 public:
   static void ExecuteInstruction(State &state) {
-#ifndef NDEBUG
-    fmt::print("PC: {:08X}\n", state.pc);
-#endif
+    // #ifndef NDEBUG
+    //     fmt::print("PC: {:08X}\n", state.pc);
+    // #endif
     Instruction instr = state.read32(state.pc);
     state.pc = state.nextPC;
     state.nextPC += 4;
@@ -85,7 +85,7 @@ public:
   // TODO: load delays maybe?
   template <ALoad T>
   static void ALoadInstruction(State &state, Instruction instr) {
-    //TODO: unaligned addr exception
+    // TODO: unaligned addr exception
     uint32_t value;
     uint32_t dest = instr.i.rt;
     uint32_t addr = state.GetGPR(instr.i.rs) + (int32_t)(int16_t)instr.i.imm;
@@ -107,7 +107,7 @@ public:
 
   template <AStore T>
   static void AStoreInstruction(State &state, Instruction instr) {
-    //TODO: unaligned addr exception
+    // TODO: unaligned addr exception
     uint32_t value = state.GetGPR(instr.i.rt);
     uint32_t addr = state.GetGPR(instr.i.rs) + (int32_t)(int16_t)instr.i.imm;
     if constexpr (T == AStore::SB) {
@@ -152,7 +152,8 @@ public:
     } else {
       // unsigned
       // TODO: check ternary constexpr stuff on godbolt
-      operand = T == Arithmetic::ADDIU ? (int32_t)(int16_t)instr.i.imm : state.GetGPR(instr.i.rt);
+      operand = T == Arithmetic::ADDIU ? (int32_t)(int16_t)instr.i.imm
+                                       : state.GetGPR(instr.i.rt);
     }
 
     if constexpr (ValueIsIn(T, Arithmetic::SUB, Arithmetic::SUBU)) {
@@ -277,19 +278,41 @@ public:
 
     if constexpr (T == MulDiv::MULT) {
       uint64_t result = (int64_t)(int32_t)op1 * (int64_t)(int32_t)op2;
-      state.hi = result & 0xffff'ffff'0000'0000 >> 32;
+      state.hi = result >> 32;
       state.lo = result & 0xffff'ffff;
       return;
     }
 
     if constexpr (T == MulDiv::MULTU) {
       uint64_t result = (uint64_t)op1 * (uint64_t)op2;
-      state.hi = result & 0xffff'ffff'0000'0000 >> 32;
+      state.hi = result >> 32;
       state.lo = result & 0xffff'ffff;
       return;
     }
 
     if constexpr (T == MulDiv::DIV) {
+      // special case: if op2 (rd) == 0, then
+      // if rs is 0..+7FFFFFFFh  (positive)      -> HI: rs, LO: -1
+      // if rs is -80000000h..-1 (negative)      -> HI: rs, LO: +1
+      // else if rs is -80000000h AND rd == -1   -> HI: 0,  LO: 0x80000000
+      if (op2 <= 0) {
+        if (!op2) {
+          state.hi = op1;
+          if (op1 >= 0) { // positive rs
+            state.lo = -1;
+          } else { // negative rs
+            state.lo = 1;
+          }
+          return;
+        }
+
+        if ((op1 & 0x80000000) && op2 == -1) {
+          state.hi = 0;
+          state.lo = 0x80000000;
+          return;
+        }
+      }
+
       uint32_t quotient = (int32_t)op1 / (int32_t)op2;
       uint32_t remainder = (int32_t)op1 % (int32_t)op2;
 
@@ -299,6 +322,12 @@ public:
     }
 
     if constexpr (T == MulDiv::DIVU) {
+      // special case: if op2 (rd) == 0, then HI = rs, LO = 0xffffffff
+      if (!op2) {
+        state.hi = op1;
+        state.lo = 0xffffffff;
+        return;
+      }
       uint32_t quotient = op1 / op2;
       uint32_t remainder = op1 % op2;
 

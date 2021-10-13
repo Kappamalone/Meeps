@@ -1,6 +1,7 @@
 #pragma once
 #include "fmt/core.h"
 #include <array>
+#include <unicorn/mips.h>
 #include <unicorn/unicorn.h>
 
 class UnicornMIPS {
@@ -36,7 +37,7 @@ public:
     // emulate machine code in infinite time (last param = 0), or when
     // finishing all the code.
     uc_err err =
-        uc_emu_start(uc, START_ADDRESS, START_ADDRESS + size, 0, 0);
+        uc_emu_start(uc, START_ADDRESS, START_ADDRESS + size, 0, size);
     if (err) {
       printf("Failed on uc_emu_start() with error returned: %u (%s)\n", err,
              uc_strerror(err));

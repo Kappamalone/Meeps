@@ -10,8 +10,7 @@
 
 using namespace Meeps;
 
-// TODO: mul/div fuzzing, ustore/loads, coprocessor 0 interface, manual testing
-// for the rest of the opcodes
+// TODO: ustore/loads, coprocessor 0 interface, manual testing for the rest of the opcodes
 
 static CPU r3000{CPUMode::Interpreter};
 static TestMemory memory{};
@@ -60,7 +59,10 @@ TEST_CASE("Unicorn Comparison") {
 
   SUBCASE("Sanity Test") {
     r3000.Reset();
+    uemu.Reset();
     memory.Reset();
+    InitRegisters();
+    REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
     memory.write<uint32_t>(&memory, 0, 0x3c080013); // lui $8 , 0x13
     r3000.Run(1);
@@ -70,15 +72,12 @@ TEST_CASE("Unicorn Comparison") {
   }
 
   SUBCASE("Shift-Imm Instruction Tests") {
-    fmt::print("Shift-Imm Instruction Tests\n");
+    fmt::print("Executing Shift-Imm Instruction Tests\n");
     for (auto i = 0; i < 10; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
-
       InitRegisters();
-
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
       std::vector<size_t> funcs = {0x0, 0x2, 0x3};
       Instruction instr = 0;
@@ -101,14 +100,12 @@ TEST_CASE("Unicorn Comparison") {
   }
 
   SUBCASE("Shift-Reg Instruction Tests") {
-    fmt::print("Shift-Reg Instruction Tests\n");
+    fmt::print("Executing Shift-Reg Instruction Tests\n");
     for (auto i = 0; i < 10; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
       InitRegisters();
-
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
       std::vector<size_t> funcs = {0x4, 0x6, 0x7};
       Instruction instr = 0;
@@ -130,15 +127,17 @@ TEST_CASE("Unicorn Comparison") {
     }
   }
 
+  // not sure how to test this against unicorn
+  // SUBCASE("MulDiv Instruction Tests") {
+  // }
+
   SUBCASE("ALU-Reg Instruction Tests") {
-    fmt::print("ALU-Reg Instruction Tests\n");
+    fmt::print("Executing ALU-Reg Instruction Tests\n");
     for (auto i = 0; i < 10; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
       InitRegisters();
-
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
       // Can't test 0 (ADD) and 2 (SUB) due to overflow traps terminating
       // unicorn execution
@@ -163,14 +162,12 @@ TEST_CASE("Unicorn Comparison") {
   }
 
   SUBCASE("ALU-imm Instruction Tests") {
-    fmt::print("ALU-Imm Instruction Tests\n");
+    fmt::print("Executing ALU-Imm Instruction Tests\n");
     for (auto i = 0; i < 100; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
       InitRegisters();
-
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
       // Can't test 0 (ADDI) due to overflow traps terminating unicorn execution
       std::vector<size_t> funcs = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6};
@@ -192,14 +189,12 @@ TEST_CASE("Unicorn Comparison") {
   }
 
   SUBCASE("LUI-imm Instruction Tests") {
-    fmt::print("LUI-Imm Instruction Tests\n");
+    fmt::print("Executing LUI-Imm Instruction Tests\n");
     for (auto i = 0; i < 10; i++) {
       r3000.Reset();
       uemu.Reset();
       memory.Reset();
       InitRegisters();
-
-      REQUIRE(CompareRegisters(state.gpr.data(), uemu.GetAllGPR()));
 
       Instruction instr = 0;
       instr.r.op = 0b001111;
