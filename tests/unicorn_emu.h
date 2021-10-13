@@ -41,6 +41,7 @@ public:
     if (err) {
       printf("Failed on uc_emu_start() with error returned: %u (%s)\n", err,
              uc_strerror(err));
+      exit(1);
     }
 
     return GetAllGPR();

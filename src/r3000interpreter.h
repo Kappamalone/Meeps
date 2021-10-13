@@ -478,7 +478,7 @@ private:
     instr(MulDiv, MULT),       instr(MulDiv, MULTU),    instr(MulDiv, DIV),     instr(MulDiv, DIVU),       // fourth column
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
     instr(Arithmetic, ADD),    instr(Arithmetic, ADDU), instr(Arithmetic, SUB), instr(Arithmetic, SUBU),   // fifth column
-    instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
+    instr(Logical, AND),       instr(Logical, OR),      instr(Logical, XOR),    instr(Logical, NOR),
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Comparison, SLT), instr(Comparison, SLTU),   // sixth column
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),
     instr(Invalid, NA),        instr(Invalid, NA),      instr(Invalid, NA),     instr(Invalid, NA),        // seventh column
