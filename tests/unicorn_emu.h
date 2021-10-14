@@ -1,7 +1,6 @@
 #pragma once
 #include "fmt/core.h"
 #include <array>
-#include <unicorn/mips.h>
 #include <unicorn/unicorn.h>
 
 class UnicornMIPS {
