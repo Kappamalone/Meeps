@@ -2,6 +2,8 @@ name: Build and Test # copied from https://github.com/merryhime/dynarmic/blob/ma
 
 on: [push, pull_request]
 
+compiler: clang
+
 env:
   BUILD_TYPE: Release
 
