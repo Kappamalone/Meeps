@@ -1,0 +1,54 @@
+name: Build and Test # copied from https://github.com/merryhime/dynarmic/blob/master/.github/workflows/build-and-test.yml
+
+on: [push, pull_request]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+      fail-fast: false
+
+    runs-on: ${{matrix.os}}
+
+    steps:
+    - name: Install build dependencies
+      if: ${{matrix.os == 'ubuntu-latest'}}
+      run: sudo apt-get install ninja-build
+
+    - name: Checkout dynarmic repo
+      uses: actions/checkout@v2
+
+    - name: Checkout unicorn repo
+      uses: actions/checkout@v2
+      with:
+        repository: unicorn-engine/unicorn
+        path: externals/unicorn
+    
+    - name: Fetch submodules
+      run: git submodule update --init --recursive --remote
+
+    - name: Build unicorn
+      working-directory: externals/unicorn
+      run: UNICORN_ARCHS=mips ./make.sh
+
+    - name: Configure CMake
+      run: >
+        cmake 
+        -B ${{github.workspace}}/build
+        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        -DMEEPS_TESTS=ON
+        -G Ninja
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      run: ninja
+
+    - name: Test
+      env:
+        DYLD_FALLBACK_LIBRARY_PATH: ${{github.workspace}}/externals/unicorn
+      working-directory: ${{github.workspace}}/build
+      run: ctest --extra-verbose -C ${{env.BUILD_TYPE}}
