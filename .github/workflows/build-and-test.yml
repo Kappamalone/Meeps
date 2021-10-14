@@ -2,8 +2,6 @@ name: Build and Test # copied from https://github.com/merryhime/dynarmic/blob/ma
 
 on: [push, pull_request]
 
-compiler: clang
-
 env:
   BUILD_TYPE: Release
 
@@ -42,6 +40,8 @@ jobs:
         cmake 
         -B ${{github.workspace}}/build
         -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        -DLIBUNICORN_INCLUDE_DIR=${{github.workspace}}/externals/unicorn/include
+        -DLIBUNICORN_LIBRARY=${{github.workspace}}/externals/unicorn/libunicorn.a
         -DMEEPS_TESTS=ON
         -G Ninja
 
