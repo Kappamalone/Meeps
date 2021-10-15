@@ -121,11 +121,7 @@ public:
 
   template <ULoadStore T>
   static void ULoadStoreInstruction(State &state, Instruction instr) {
-    if constexpr (ValueIsIn(T, ULoadStore::LWL, ULoadStore::LWR)) {
-    }
-
-    if constexpr (ValueIsIn(T, ULoadStore::SWL, ULoadStore::SWR)) {
-    }
+    // I really don't get this...
 
     fmt::print("[Unaligned Load Store] Unimplemented!");
     exit(1);
@@ -414,35 +410,56 @@ public:
   template <COP T> static void COPInstruction(State &state, Instruction instr) {
     // mfc, mtc, rfe
     if constexpr (T == COP::COP0) {
+      switch (instr.i.rs) {
+      case 0b0'0000: // MFC (data)
+        // something like: state.SetGPR(instr.i.rt, state.cop0.GetDataReg(instr.i.rd))
+        break;
+      case 0b0'0100: // MTC (data)
+        // something like: state.cop0.SetDataReg(instr.i.rd, state.GetGPR(instr.i.rt))
+        break;
+      case 0b1'0000: // RFE
+        // TODO: exceptions do be confusing
+        break;
+      default:
+        InvalidInstruction<Invalid::COP>(state, instr);
+        break;
+      }
     }
 
     if constexpr (T == COP::COP2) {
+      fmt::print("[COP] Not Implemented Yet!\n");
+      exit(1);
     }
-
-    fmt::print("[COP] Not Implemented Yet!\n");
-    exit(1);
   }
 
   template <LWC T> static void LWCInstruction(State &state, Instruction instr) {
+    const uint32_t addr =
+        state.GetGPR(instr.i.rs) + (int32_t)(int16_t)instr.i.imm;
+    const uint32_t value = state.read32(addr);
     if constexpr (T == LWC::COP0) {
+      // using interface, something like: state.cop0.SetDataReg(instr.i.rt);
     }
 
     if constexpr (T == LWC::COP2) {
+      fmt::print("[COP2] Not Implemented Yet!\n");
+      exit(1);
     }
-
-    fmt::print("[COP] Not Implemented Yet!\n");
-    exit(1);
   }
 
   template <SWC T> static void SWCInstruction(State &state, Instruction instr) {
+    const uint32_t addr =
+        state.GetGPR(instr.i.rs) + (int32_t)(int16_t)instr.i.imm;
+    // using interface, something like: value =
+    // state.cop0.GetDataReg(instr.i.rt);
+    const uint32_t value = 0;
     if constexpr (T == SWC::COP0) {
+      state.write32(addr, value);
     }
 
     if constexpr (T == SWC::COP2) {
+      fmt::print("[COP2] Not Implemented Yet!\n");
+      exit(1);
     }
-
-    fmt::print("[COP] Not Implemented Yet!\n");
-    exit(1);
   }
 
   template <Exception T>

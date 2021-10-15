@@ -11,7 +11,6 @@
 using namespace Meeps;
 
 // TODO: ustore/loads, coprocessor 0 interface, manual testing for the rest of the opcodes
-// TODO: proper compile options
 
 static CPU r3000{CPUMode::Interpreter};
 static TestMemory memory{};
@@ -50,7 +49,7 @@ static auto InitRegisters = []() {
 };
 
 TEST_CASE("Unicorn Comparison") {
-  r3000.SetMemoryPointer(&memory);
+  r3000.SetMemoryPointer(&memory); //TODO: why doesn't implicit template instantiation work on linux? (travis)
   r3000.SetReadPointer<uint8_t>(&TestMemory::read<uint8_t>);
   r3000.SetWritePointer<uint8_t>(&TestMemory::write<uint8_t>);
   r3000.SetReadPointer<uint16_t>(&TestMemory::read<uint16_t>);
