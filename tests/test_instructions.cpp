@@ -11,6 +11,7 @@
 using namespace Meeps;
 
 // TODO: ustore/loads, coprocessor 0 interface, manual testing for the rest of the opcodes
+// TODO: proper compile options
 
 static CPU r3000{CPUMode::Interpreter};
 static TestMemory memory{};

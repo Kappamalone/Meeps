@@ -295,10 +295,10 @@ public:
       // if rs is 0..+7FFFFFFFh  (positive)      -> HI: rs, LO: -1
       // if rs is -80000000h..-1 (negative)      -> HI: rs, LO: +1
       // else if rs is -80000000h AND rd == -1   -> HI: 0,  LO: 0x80000000
-      if (op2 <= 0) {
+      if (static_cast<int32_t>(op2) <= 0) {
         if (!op2) {
           state.hi = op1;
-          if (op1 >= 0) { // positive rs
+          if (static_cast<int32_t>(op1) >= 0) { // positive rs
             state.lo = -1;
           } else { // negative rs
             state.lo = 1;
@@ -306,7 +306,7 @@ public:
           return;
         }
 
-        if ((op1 & 0x80000000) && op2 == -1) {
+        if ((op1 & 0x80000000) && static_cast<int32_t>(op2) == -1) {
           state.hi = 0;
           state.lo = 0x80000000;
           return;
@@ -382,28 +382,28 @@ public:
         state.nextPC = value;
       }
     } else if constexpr (T == Branch::BLTZ) {
-      if (rsReg < 0) {
+      if (static_cast<int32_t>(rsReg) < 0) {
         state.nextPC = value;
       }
     } else if constexpr (T == Branch::BGEZ) {
-      if (rsReg >= 0) {
+      if (static_cast<int32_t>(rsReg) >= 0) {
         state.nextPC = value;
       }
     } else if constexpr (T == Branch::BGTZ) {
-      if (rsReg > 0) {
+      if (static_cast<int32_t>(rsReg) > 0) {
         state.nextPC = value;
       }
     } else if constexpr (T == Branch::BLEZ) {
-      if (rsReg <= 0) {
+      if (static_cast<int32_t>(rsReg) <= 0) {
         state.nextPC = value;
       }
     } else if constexpr (T == Branch::BLTZAL) {
-      if (rsReg < 0) {
+      if (static_cast<int32_t>(rsReg) < 0) {
         state.nextPC = value;
         state.SetGPR(31, state.pc + 4);
       }
     } else if constexpr (T == Branch::BGEZAL) {
-      if (rsReg >= 0) {
+      if (static_cast<int32_t>(rsReg) >= 0) {
         state.nextPC = value;
         state.SetGPR(31, state.pc + 4);
       }
@@ -476,7 +476,7 @@ private:
     static constexpr std::array<interpreterfp, 4> branchTable{
         instr(Branch, BLTZ), instr(Branch, BGEZ), instr(Branch, BLTZAL),
         instr(Branch, BGEZAL)};
-    size_t hash = (((instr.i.rt >> 1) == 0x8) << 1) | instr.i.rt & 1;
+    size_t hash = (((instr.i.rt >> 1) == 0x8) << 1) | (instr.i.rt & 1);
     branchTable[hash](state, instr);
   }
 
