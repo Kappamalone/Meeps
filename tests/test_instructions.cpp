@@ -16,7 +16,7 @@ static CPU r3000{CPUMode::Interpreter};
 static TestMemory memory{};
 static auto &state = r3000.GetState();
 static auto uemu = UnicornMIPS();
-static auto instrCount = 100000;
+static constexpr auto instrCount = 100000;
 
 // Helper functions
 static auto rnum = [](int lower, int upper) { // both inclusive

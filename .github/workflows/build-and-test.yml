@@ -19,7 +19,7 @@ jobs:
       if: ${{matrix.os == 'ubuntu-latest'}}
       run: sudo apt-get install ninja-build
 
-    - name: Checkout dynarmic repo
+    - name: Checkout meeps repo
       uses: actions/checkout@v2
 
     - name: Checkout unicorn repo
