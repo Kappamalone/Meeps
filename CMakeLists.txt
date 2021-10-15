@@ -5,6 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+option(MEEPS_TESTS "Build tests" OFF)
+option(MEEPS_WARNINGS_AS_ERRORS "Warnings as errors" OFF)
+
 # Add the module directory to the list of paths
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMakeModules")
 
@@ -36,7 +39,7 @@ if (MSVC)
         /bigobj             # Increase number of sections in .obj files
         /DNOMINMAX)
 
-    if (SLIICE_WARNINGS_AS_ERRORS)
+    if (MEEPS_WARNINGS_AS_ERRORS)
         list(APPEND CXX_FLAGS
              /WX)
     endif()
@@ -51,17 +54,16 @@ else()
         -Wall
         -Wextra
         -Wcast-qual
-        -pedantic
-        -pedantic-errors
+        # -pedantic
+        # -pedantic-errors
         -Wno-missing-braces)
 
-    if (SLIICE_WARNINGS_AS_ERRORS)
+    if (MEEPS_WARNINGS_AS_ERRORS)
         list(APPEND CXX_FLAGS
              -Werror)
     endif()
 endif()
 
-option(MEEPS_TESTS "Build tests" OFF)
 if (MEEPS_TESTS)
     message("Buliding tests!")
     # Enable unit-testing.
