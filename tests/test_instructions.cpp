@@ -51,12 +51,12 @@ static auto InitRegisters = []() {
 
 TEST_CASE("Unicorn Comparison") {
   r3000.SetMemoryPointer(&memory);
-  r3000.SetReadPointer(&TestMemory::read<uint8_t>);
-  r3000.SetWritePointer(&TestMemory::write<uint8_t>);
-  r3000.SetReadPointer(&TestMemory::read<uint16_t>);
-  r3000.SetWritePointer(&TestMemory::write<uint16_t>);
-  r3000.SetReadPointer(&TestMemory::read<uint32_t>);
-  r3000.SetWritePointer(&TestMemory::write<uint32_t>);
+  r3000.SetReadPointer<uint8_t>(&TestMemory::read<uint8_t>);
+  r3000.SetWritePointer<uint8_t>(&TestMemory::write<uint8_t>);
+  r3000.SetReadPointer<uint16_t>(&TestMemory::read<uint16_t>);
+  r3000.SetWritePointer<uint16_t>(&TestMemory::write<uint16_t>);
+  r3000.SetReadPointer<uint32_t>(&TestMemory::read<uint32_t>);
+  r3000.SetWritePointer<uint32_t>(&TestMemory::write<uint32_t>);
 
   SUBCASE("Sanity Test") {
     r3000.Reset();

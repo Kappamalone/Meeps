@@ -54,8 +54,8 @@ else()
         -Wall
         -Wextra
         -Wcast-qual
-        # -pedantic
-        # -pedantic-errors
+        -pedantic
+        -pedantic-errors
         -Wno-missing-braces)
 
     if (MEEPS_WARNINGS_AS_ERRORS)
