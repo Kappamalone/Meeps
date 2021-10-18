@@ -13,7 +13,7 @@ enum class CPUMode {
 
 class CPU {
 public:
-  CPU(CPUMode mode) { this->mode = mode; }
+  CPU(CPUMode mode, COP0* cop0) : state(cop0) { this->mode = mode; }
 
   void Run(int cycles) {
     while (cycles--) {
@@ -21,9 +21,7 @@ public:
     }
   }
 
-  void Reset() {
-    state.Reset();
-  }
+  void Reset() { state.Reset(); }
 
   State &GetState() { return state; }
 

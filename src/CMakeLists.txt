@@ -1,6 +1,7 @@
 set(SOURCES
     r3000.h
     r3000interpreter.h
+    cop0.h
     types.h
 )
 

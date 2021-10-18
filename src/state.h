@@ -1,11 +1,12 @@
 #pragma once
 #include "types.h"
+#include "cop0.h"
 #include <array>
 
 namespace Meeps {
 struct State {
 public:
-  State() {
+  State(COP0* cop0) : cop0(cop0) {
     Reset();
   }
 
@@ -16,14 +17,6 @@ public:
     hi = 0;
     lo = 0;
   }
-
-  // Two PC's are used to deal with branch delays
-  uint32_t pc;
-  uint32_t nextPC;
-  uint32_t hi;
-  uint32_t lo;
-
-  std::array<uint32_t, 32> gpr;
 
   uint32_t GetGPR(size_t reg) { return gpr[reg]; }
 
@@ -41,6 +34,14 @@ public:
 
   inline uint32_t read32(size_t addr) { return rp32(mp, addr); }
   inline void write32(size_t addr, uint32_t value) { wp32(mp, addr, value); }
+
+  
+  uint32_t pc;     // Two PC's are used to deal with branch delays
+  uint32_t nextPC;
+  uint32_t hi;
+  uint32_t lo;
+  std::array<uint32_t, 32> gpr;
+  COP0* cop0;
 
   // Interface
   void *mp;

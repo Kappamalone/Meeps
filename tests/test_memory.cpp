@@ -1,15 +1,18 @@
 //#pragma once
 
 #include "test_memory.h"
+#include "test_cop0.h"
 #include <array>
 #include <doctest.h>
 #include <fmt/core.h>
 #include <r3000.h>
 #include <r3000interpreter.h>
 
+
 using namespace Meeps;
 
-static CPU r3000{CPUMode::Interpreter};
+static TestCOP0 cop0{};
+static CPU r3000{CPUMode::Interpreter, &cop0};
 static TestMemory memory{};
 static auto &state = r3000.GetState();
 

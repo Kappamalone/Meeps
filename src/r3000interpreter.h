@@ -5,6 +5,7 @@
 #include <array>
 
 // TODO: debug log, throwing proper exceptions (like xbyak what() : )
+// TODO: cache and that cache control bit in cop0?
 
 namespace Meeps {
 
@@ -412,10 +413,11 @@ public:
     if constexpr (T == COP::COP0) {
       switch (instr.i.rs) {
       case 0b0'0000: // MFC (data)
-        // something like: state.SetGPR(instr.i.rt, state.cop0.GetDataReg(instr.i.rd))
+        state.SetGPR(instr.i.rt, state.cop0->GetReg(instr.r.rd));
         break;
       case 0b0'0100: // MTC (data)
-        // something like: state.cop0.SetDataReg(instr.i.rd, state.GetGPR(instr.i.rt))
+        // something like: state.cop0.SetReg(instr.i.rd, state.GetGPR(instr.i.rt))
+        state.cop0->SetReg(instr.r.rd, state.GetGPR(instr.i.rt));
         break;
       case 0b1'0000: // RFE
         // TODO: exceptions do be confusing
@@ -438,6 +440,7 @@ public:
     const uint32_t value = state.read32(addr);
     if constexpr (T == LWC::COP0) {
       // using interface, something like: state.cop0.SetDataReg(instr.i.rt);
+      state.cop0->SetReg(instr.i.rt, value);
     }
 
     if constexpr (T == LWC::COP2) {
@@ -449,9 +452,8 @@ public:
   template <SWC T> static void SWCInstruction(State &state, Instruction instr) {
     const uint32_t addr =
         state.GetGPR(instr.i.rs) + (int32_t)(int16_t)instr.i.imm;
-    // using interface, something like: value =
-    // state.cop0.GetDataReg(instr.i.rt);
-    const uint32_t value = 0;
+    const uint32_t value =  state.cop0->GetReg(instr.i.rt);
+
     if constexpr (T == SWC::COP0) {
       state.write32(addr, value);
     }

@@ -1,3 +1,4 @@
+#include "test_cop0.h"
 #include "test_memory.h"
 #include "unicorn_emu.h"
 #include <chrono>
@@ -8,11 +9,14 @@
 #include <random>
 #include <vector>
 
+
 using namespace Meeps;
 
-// TODO: ustore/loads, coprocessor 0 interface, manual testing for the rest of the opcodes
+// TODO: ustore/loads, manual testing for the rest of
+// the opcodes
 
-static CPU r3000{CPUMode::Interpreter};
+static TestCOP0 cop0{};
+static CPU r3000{CPUMode::Interpreter, &cop0};
 static TestMemory memory{};
 static auto &state = r3000.GetState();
 static auto uemu = UnicornMIPS();
@@ -49,7 +53,8 @@ static auto InitRegisters = []() {
 };
 
 TEST_CASE("Unicorn Comparison") {
-  r3000.SetMemoryPointer(&memory); //TODO: why doesn't implicit template instantiation work on linux? (travis)
+  r3000.SetMemoryPointer(&memory); // TODO: why doesn't implicit template
+                                   // instantiation work on linux? (travis)
   r3000.SetReadPointer<uint8_t>(&TestMemory::read<uint8_t>);
   r3000.SetWritePointer<uint8_t>(&TestMemory::write<uint8_t>);
   r3000.SetReadPointer<uint16_t>(&TestMemory::read<uint16_t>);
