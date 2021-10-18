@@ -3,8 +3,9 @@
 #include "fmt/core.h"
 #include "state.h"
 #include <array>
+#include <stdexcept>
 
-// TODO: debug log, throwing proper exceptions (like xbyak what() : )
+// TODO: throwing proper exceptions (like xbyak what() : )
 // TODO: cache and that cache control bit in cop0?
 
 namespace Meeps {
@@ -73,9 +74,8 @@ using interpreterfp = void (*)(State &, Instruction);
 class R3000Interpreter {
 public:
   static void ExecuteInstruction(State &state) {
-    // #ifndef NDEBUG
-    //     fmt::print("PC: {:08X}\n", state.pc);
-    // #endif
+    DPRINT("PC: {:08X}\n", state.pc);
+
     Instruction instr = state.read32(state.pc);
     state.pc = state.nextPC;
     state.nextPC += 4;
@@ -124,8 +124,7 @@ public:
   static void ULoadStoreInstruction(State &state, Instruction instr) {
     // I really don't get this...
 
-    fmt::print("[Unaligned Load Store] Unimplemented!");
-    exit(1);
+    throw std::invalid_argument("[Unaligned Load Store] Unimplemented!");
   }
 
   template <Arithmetic T>
@@ -416,7 +415,8 @@ public:
         state.SetGPR(instr.i.rt, state.cop0->GetReg(instr.r.rd));
         break;
       case 0b0'0100: // MTC (data)
-        // something like: state.cop0.SetReg(instr.i.rd, state.GetGPR(instr.i.rt))
+        // something like: state.cop0.SetReg(instr.i.rd,
+        // state.GetGPR(instr.i.rt))
         state.cop0->SetReg(instr.r.rd, state.GetGPR(instr.i.rt));
         break;
       case 0b1'0000: // RFE
@@ -429,8 +429,7 @@ public:
     }
 
     if constexpr (T == COP::COP2) {
-      fmt::print("[COP] Not Implemented Yet!\n");
-      exit(1);
+      throw std::invalid_argument("[COP2 Instruction] Not Implemented Yet!\n");
     }
   }
 
@@ -444,45 +443,43 @@ public:
     }
 
     if constexpr (T == LWC::COP2) {
-      fmt::print("[COP2] Not Implemented Yet!\n");
-      exit(1);
+      throw std::invalid_argument("[COP2 LWC] Not Implemented Yet!\n");
     }
   }
 
   template <SWC T> static void SWCInstruction(State &state, Instruction instr) {
     const uint32_t addr =
         state.GetGPR(instr.i.rs) + (int32_t)(int16_t)instr.i.imm;
-    const uint32_t value =  state.cop0->GetReg(instr.i.rt);
+    const uint32_t value = state.cop0->GetReg(instr.i.rt);
 
     if constexpr (T == SWC::COP0) {
       state.write32(addr, value);
     }
 
     if constexpr (T == SWC::COP2) {
-      fmt::print("[COP2] Not Implemented Yet!\n");
-      exit(1);
+      throw std::invalid_argument("[COP2 SWC] Not Implemented Yet!\n");
     }
   }
 
   template <Exception T>
   static void ExceptionInstruction(State &state, Instruction instr) {
-    fmt::print("[SYSCALL / BREAK] PC: {:08X} NEXTPC: {:08X} OPCODE: {:08X}\n",
-               state.pc, state.nextPC, instr.value);
-    exit(1);
+    throw std::invalid_argument(fmt::format(
+        "[SYSCALL / BREAK] PC: {:08X} NEXTPC: {:08X} OPCODE: {:08X}\n",
+        state.pc, state.nextPC, instr.value));
   }
 
   template <Invalid T>
   static void InvalidInstruction(State &state, Instruction instr) {
     if constexpr (T == Invalid::NA) {
-      fmt::print(
+      throw std::invalid_argument(fmt::format(
           "[INVALID INSTRUCTION] PC: {:08X} NEXTPC: {:08X} OPCODE: {:08X}\n",
-          state.pc, state.nextPC, instr.value);
+          state.pc, state.nextPC, instr.value));
     } else if (T == Invalid::COP) {
-      fmt::print("[INVALID COP INSTRUCTION] PC: {:08X} NEXTPC: {:08X} OPCODE: "
-                 "{:08X}\n",
-                 state.pc, state.nextPC, instr.value);
+      throw std::invalid_argument(fmt::format(
+          "[INVALID DECODING COP INSTRUCTION] PC: {:08X} NEXTPC: {:08X} OPCODE: "
+          "{:08X}\n",
+          state.pc, state.nextPC, instr.value));
     }
-    exit(1);
   }
 
 private:
