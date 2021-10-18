@@ -114,9 +114,9 @@ public:
     if constexpr (T == AStore::SB) {
       state.write8(addr, value & 0xff);
     } else if constexpr (T == AStore::SH) {
-      state.write8(addr, value & 0xffff);
+      state.write16(addr, value & 0xffff);
     } else if constexpr (T == AStore::SW) {
-      state.write8(addr, value);
+      state.write32(addr, value);
     }
   }
 
